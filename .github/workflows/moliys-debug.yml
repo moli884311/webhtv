@@ -50,5 +50,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: moliys-tv-arm64-debug
-          path: app/build/outputs/apk/mobile/arm64_v8a/debug/*.apk
+          path: app/build/outputs/apk/**/debug/*.apk
           if-no-files-found: error
