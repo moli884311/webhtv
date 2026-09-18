@@ -99,3 +99,9 @@
 
 # Zxing
 -keep class com.google.zxing.** { *; }
+
+# Moliys shell
+-keep class com.moliys.tvbox.** { *; }
+-keepclassmembers class com.moliys.tvbox.MainActivity$Bridge {
+    @android.webkit.JavascriptInterface <methods>;
+}
