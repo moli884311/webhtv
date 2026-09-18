@@ -917,7 +917,7 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    showVideoPanel();
+                    loadThenShowSites();
                 }
             });
         }
