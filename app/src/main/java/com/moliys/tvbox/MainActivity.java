@@ -375,6 +375,7 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 pageLoaded = true;
                 pushInsets();
+                injectVideoEntry(view);
             }
         });
         webView.addJavascriptInterface(new Bridge(), "TVBoxNative");
@@ -622,6 +623,29 @@ public class MainActivity extends Activity {
             return "''";
         }
         return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
+    }
+
+    /** 站点页内注入原生「影视」入口（仅 App 内生效，不影响网页端）。 */
+    private void injectVideoEntry(WebView view) {
+        if (view == null) {
+            return;
+        }
+        final String js = "(function(){"
+                + "if(window.__moliysTvEntry){return;}"
+                + "window.__moliysTvEntry=true;"
+                + "var b=document.createElement('div');"
+                + "b.textContent='影视';"
+                + "b.style.cssText='position:fixed;right:16px;bottom:110px;z-index:2147483647;"
+                + "padding:10px 18px;border-radius:22px;color:#fff;font-size:15px;font-weight:600;"
+                + "background:linear-gradient(135deg,#1E6FEB,#7A4DFF);"
+                + "box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;user-select:none';"
+                + "b.onclick=function(){try{window.TVBoxNative.openVideo();}catch(e){}};"
+                + "(document.body||document.documentElement).appendChild(b);"
+                + "})();";
+        try {
+            view.evaluateJavascript(js, null);
+        } catch (Exception ignored) {
+        }
     }
 
     /** 打开内置影视（webhtv 内核）首页。 */
