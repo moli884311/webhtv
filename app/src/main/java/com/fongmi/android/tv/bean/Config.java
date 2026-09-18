@@ -89,7 +89,7 @@ public class Config {
 
     public static Config vod() {
         Config item = AppDatabase.get().getConfigDao().findOne(0);
-        return item == null ? create(0, "https://tvbox.moliys.icu/webhome/config.json", "沫离影视") : item;
+        return item == null ? create(0) : item;
     }
 
     public static Config live() {

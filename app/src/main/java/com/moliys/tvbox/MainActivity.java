@@ -30,10 +30,20 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.ValueCallback;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.text.InputType;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import com.fongmi.android.tv.api.config.VodConfig;
+import com.fongmi.android.tv.bean.Config;
+import com.fongmi.android.tv.bean.Site;
+import com.fongmi.android.tv.impl.Callback;
+
 import java.io.File;
+import java.util.List;
 
 public class MainActivity extends Activity {
     private static final String TAG = "TVBoxMain";
@@ -648,6 +658,134 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** 影视面板：进入首页 / 切换站源 / 自定义接口。 */
+    private void showVideoPanel() {
+        String[] items = {"进入影视首页", "切换站源", "输入/更换接口"};
+        new AlertDialog.Builder(this)
+                .setTitle("影视")
+                .setItems(items, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (which == 0) openVideoHome();
+                        else if (which == 1) loadThenShowSites();
+                        else showInterfaceDialog();
+                    }
+                })
+                .show();
+    }
+
+    /** 确保当前接口已加载，然后弹出站源列表。 */
+    private void loadThenShowSites() {
+        final Config cfg = Config.vod();
+        if (cfg == null || cfg.getUrl() == null || cfg.getUrl().length() == 0) {
+            showInterfaceDialog();
+            return;
+        }
+        VodConfig.load(cfg, new Callback() {
+            @Override
+            public void success() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        showSiteDialog();
+                    }
+                });
+            }
+
+            @Override
+            public void error(String msg) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(MainActivity.this, "接口加载失败，请检查地址", Toast.LENGTH_SHORT).show();
+                        showInterfaceDialog();
+                    }
+                });
+            }
+        });
+    }
+
+    /** 站源切换弹窗。 */
+    private void showSiteDialog() {
+        final List<Site> sites = VodConfig.get().getSites();
+        if (sites == null || sites.isEmpty()) {
+            showInterfaceDialog();
+            return;
+        }
+        final String[] names = new String[sites.size()];
+        for (int i = 0; i < sites.size(); i++) {
+            names[i] = sites.get(i).getName();
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("选择站源")
+                .setItems(names, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        VodConfig.get().setHome(sites.get(which));
+                        Toast.makeText(MainActivity.this, "已切换：" + names[which], Toast.LENGTH_SHORT).show();
+                        openVideoHome();
+                    }
+                })
+                .setNegativeButton("输入接口", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        showInterfaceDialog();
+                    }
+                })
+                .show();
+    }
+
+    /** 自定义接口输入弹窗（不内置任何接口）。 */
+    private void showInterfaceDialog() {
+        final EditText input = new EditText(this);
+        input.setHint("https://example.com/config.json");
+        input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
+        Config cur = Config.vod();
+        if (cur != null && cur.getUrl() != null) {
+            input.setText(cur.getUrl());
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("输入接口地址")
+                .setView(input)
+                .setPositiveButton("加载", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String url = input.getText().toString().trim();
+                        if (url.length() == 0) {
+                            return;
+                        }
+                        loadInterface(url);
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void loadInterface(final String url) {
+        final Config cfg = Config.create(0, url, "");
+        VodConfig.load(cfg, new Callback() {
+            @Override
+            public void success() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        showSiteDialog();
+                    }
+                });
+            }
+
+            @Override
+            public void error(String msg) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(MainActivity.this, "接口加载失败，请检查地址", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
+    }
+
     /** 打开内置影视（webhtv 内核）首页。 */
     private void openVideoHome() {
         startFongmi("com.fongmi.android.tv.ui.activity.HomeActivity", null);
@@ -776,7 +914,12 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openVideo() {
-            openVideoHome();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    showVideoPanel();
+                }
+            });
         }
 
         @JavascriptInterface
