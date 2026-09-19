@@ -21,6 +21,8 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SITEKEYS = os.path.join(BASE, 'app/src/main/java/com/moliys/tvbox/SiteKeys.java')
 HEALTH_URL = 'https://tvbox.moliys.icu/health.json'
 CAI_URL = 'https://tvbox.moliys.icu/data/cai-health.json'
+LIST_URL = 'https://tvbox.moliys.icu/list.txt'
+INTERFACES_URL = 'https://tvbox.moliys.icu/api/interfaces.json'
 MAGIC = b'MSITEPK2'
 
 
@@ -38,6 +40,19 @@ def fetch(url, dest):
         data = r.read()
     obj = json.loads(data.decode('utf-8'))
     if not obj.get('generated_at') and not obj.get('sites'):
+        raise SystemExit('unexpected payload from ' + url)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, 'wb') as f:
+        f.write(data)
+    print('fetched %s -> %s (%d bytes)' % (url, dest, len(data)))
+
+
+def fetch_text(url, dest, must_contain='|'):
+    req = urllib.request.Request(url, headers={'User-Agent': 'moliys-repack/1.0'})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        data = r.read()
+    text = data.decode('utf-8', 'replace')
+    if must_contain and must_contain not in text:
         raise SystemExit('unexpected payload from ' + url)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     with open(dest, 'wb') as f:
@@ -112,6 +127,8 @@ def main():
     if not args.no_fetch:
         fetch(HEALTH_URL, os.path.join(site_dir, 'health.json'))
         fetch(CAI_URL, os.path.join(site_dir, 'data/cai-health.json'))
+        fetch_text(LIST_URL, os.path.join(site_dir, 'list.txt'))
+        fetch_text(INTERFACES_URL, os.path.join(site_dir, 'api/interfaces.json'), must_contain='"items"')
     if args.manifest_url:
         patch_manifest(site_dir, args.manifest_url)
     pack(site_dir, out)

@@ -75,7 +75,7 @@ jobs:
 
       - name: Build release
         env:
-          WEBHTV_RELEASE_TAG: moliys-1.0.40
+          WEBHTV_RELEASE_TAG: moliys-1.0.41
           WEBHTV_APK_SUFFIX: lite-official
         run: |
           chmod +x ./gradlew
