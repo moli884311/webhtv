@@ -831,10 +831,12 @@ public class MainActivity extends Activity {
     }
 
     private void loadInterface(final String url) {
+        TraceLogger.log("ui", "loadInterface url=%s", url);
         final Config cfg = Config.create(0, url, "");
         VodConfig.load(cfg, new Callback() {
             @Override
             public void success() {
+                TraceLogger.log("ui", "loadInterface success sites=%s", VodConfig.get().getSites() == null ? -1 : VodConfig.get().getSites().size());
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -845,6 +847,7 @@ public class MainActivity extends Activity {
 
             @Override
             public void error(String msg) {
+                TraceLogger.log("ui", "loadInterface error=%s", msg);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -857,6 +860,7 @@ public class MainActivity extends Activity {
 
     /** 打开内置影视（webhtv 内核）首页。 */
     private void openVideoHome() {
+        TraceLogger.log("ui", "openVideoHome");
         startFongmi("com.fongmi.android.tv.ui.activity.HomeActivity", null);
     }
 
@@ -880,6 +884,7 @@ public class MainActivity extends Activity {
     }
 
     private void startFongmi(final String cls, final String url) {
+        TraceLogger.log("ui", "startFongmi cls=%s", cls);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {

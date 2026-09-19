@@ -59,6 +59,11 @@ public final class CrashLogger {
             if (builder.length() > 0) builder.append("\n\n");
             builder.append(java);
         }
+        String trace = TraceLogger.read(app);
+        if (trace != null) {
+            if (builder.length() > 0) builder.append("\n\n");
+            builder.append("=== 运行轨迹（最后一步即崩溃点）===\n").append(trace);
+        }
         return builder.length() == 0 ? null : builder.toString();
     }
 
@@ -67,6 +72,7 @@ public final class CrashLogger {
         if (app == null) return;
         new File(dir(app), FILE_JAVA).delete();
         new File(dir(app), FILE_EXIT).delete();
+        TraceLogger.clear(app);
     }
 
     private static void captureExit(Context context) {
