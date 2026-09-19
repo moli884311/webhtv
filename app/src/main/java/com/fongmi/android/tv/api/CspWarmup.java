@@ -8,7 +8,6 @@ import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.utils.Task;
 import com.github.catvod.crawler.SpiderDebug;
-import com.moliys.tvbox.TraceLogger;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -81,14 +80,11 @@ public final class CspWarmup {
         long start = System.currentTimeMillis();
         try {
             SpiderDebug.log("csp-warmup", "init start reason=%s site=%s api=%s jar=%s", reason, site.getKey(), site.getApi(), jarKey(site));
-            TraceLogger.log("warmup", "init start site=%s api=%s", site.getKey(), site.getApi());
             site.recent().spider();
             SpiderDebug.log("csp-warmup", "init done reason=%s site=%s api=%s cost=%sms", reason, site.getKey(), site.getApi(), System.currentTimeMillis() - start);
-            TraceLogger.log("warmup", "init done site=%s", site.getKey());
             return true;
         } catch (Throwable e) {
             SpiderDebug.log("csp-warmup", "init error reason=%s site=%s err=%s msg=%s cost=%sms", reason, site.getKey(), e.getClass().getSimpleName(), e.getMessage(), System.currentTimeMillis() - start);
-            TraceLogger.log("warmup", "init error site=%s err=%s", site.getKey(), e.getClass().getSimpleName());
             return false;
         }
     }

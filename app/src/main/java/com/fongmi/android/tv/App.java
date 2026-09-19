@@ -29,8 +29,6 @@ import com.github.catvod.crawler.DebugLogStore;
 import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.Init;
 import com.google.gson.Gson;
-import com.moliys.tvbox.CrashLogger;
-import com.moliys.tvbox.TraceLogger;
 
 public class App extends Application implements Application.ActivityLifecycleCallbacks {
 
@@ -90,19 +88,14 @@ public class App extends Application implements Application.ActivityLifecycleCal
     @Override
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
-        TraceLogger.setContext(base);
-        boolean recovery = PlaybackRecoveryMonitor.isRecoveryProcess(base);
-        TraceLogger.log("app", "attachBaseContext recovery=%s", recovery);
-        if (recovery) return;
+        if (PlaybackRecoveryMonitor.isRecoveryProcess(base)) return;
         Init.set(base);
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
-        TraceLogger.log("app", "onCreate start");
         if (PlaybackRecoveryMonitor.isRecoveryProcess(this)) return;
-        CrashLogger.install(this);
         PlaybackMemoryMonitor.process().initialize(this);
         PlaybackSystemConditionMonitor.process().initialize(this);
         Setting.applyLanguage();
@@ -117,7 +110,6 @@ public class App extends Application implements Application.ActivityLifecycleCal
         DanmakuSearchListFocusFixer.start();
         registerActivityLifecycleCallbacks(this);
         post(this::startBackgroundServices, 1200);
-        TraceLogger.log("app", "onCreate done");
     }
 
     @Override
@@ -134,13 +126,11 @@ public class App extends Application implements Application.ActivityLifecycleCal
 
     private void startBackgroundServices() {
         SpiderDebug.log("startup", "background services start cost=%sms", System.currentTimeMillis() - time);
-        TraceLogger.log("app", "background services start");
         Server.get().start();
         PlaybackRemoteSyncer.start();
         RemoteAgent.get().start();
         NsdDeviceDiscovery.register();
         SpiderDebug.log("startup", "background services ready cost=%sms", System.currentTimeMillis() - time);
-        TraceLogger.log("app", "background services ready");
     }
 
     @Override

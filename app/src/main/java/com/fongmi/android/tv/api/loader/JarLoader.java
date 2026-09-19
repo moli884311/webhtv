@@ -11,7 +11,6 @@ import com.github.catvod.crawler.SpiderNull;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Path;
 import com.github.catvod.utils.Util;
-import com.moliys.tvbox.TraceLogger;
 
 import org.json.JSONObject;
 
@@ -74,14 +73,12 @@ public class JarLoader {
         }
         String cachePath = Path.jar().getAbsolutePath();
         SpiderDebug.log("jar-loader", "load start key=%s file=%s size=%s cache=%s", key, file.getAbsolutePath(), file.length(), cachePath);
-        TraceLogger.log("jar", "load start key=%s size=%s", key, file.length());
         DexClassLoader loader = new CspDexClassLoader(file.getAbsolutePath(), cachePath, cachePath, App.get().getClassLoader());
         invokeInit(key, loader);
         invokeNetworkCompat(key, loader);
         invokeProxy(key, loader);
         loaders.put(key, loader);
         SpiderDebug.log("jar-loader", "load done key=%s cost=%sms", key, System.currentTimeMillis() - start);
-        TraceLogger.log("jar", "load done key=%s", key);
     }
 
     private void invokeNetworkCompat(String key, DexClassLoader loader) {
@@ -127,16 +124,13 @@ public class JarLoader {
         long start = System.currentTimeMillis();
         try {
             SpiderDebug.log("jar-loader", "jar init start key=%s", key);
-            TraceLogger.log("jar", "jar init start key=%s", key);
             Class<?> clz = loader.loadClass("com.github.catvod.spider.Init");
             Method method = clz.getMethod("init", Context.class);
             method.invoke(clz, App.get());
             SpiderDebug.log("jar-loader", "jar init done key=%s cost=%sms", key, System.currentTimeMillis() - start);
-            TraceLogger.log("jar", "jar init done key=%s", key);
         } catch (Throwable e) {
             SpiderDebug.log("jar-loader", "jar init error key=%s cost=%sms error=%s", key, System.currentTimeMillis() - start, error(e));
             SpiderDebug.log("jar-loader", e);
-            TraceLogger.log("jar", "jar init error key=%s error=%s", key, error(e));
             e.printStackTrace();
         }
     }
@@ -165,7 +159,6 @@ public class JarLoader {
             if (md5.startsWith("http")) md5 = OkHttp.string(md5).trim();
             jar = texts[0];
             SpiderDebug.log("jar-loader", "parse start key=%s source=%s md5=%s", key, source(jar), !md5.isEmpty());
-            TraceLogger.log("jar", "parse start key=%s md5=%s", key, !md5.isEmpty());
             if (!md5.isEmpty() && Util.equals(jar, md5)) {
                 load(key, Path.jar(jar));
             } else if (jar.startsWith("http")) {
@@ -194,25 +187,20 @@ public class JarLoader {
             long start = System.currentTimeMillis();
             try {
                 SpiderDebug.log("jar-loader", "spider init start site=%s api=%s jar=%s ext=%s", key, api, jaKey, ext == null ? 0 : ext.length());
-                TraceLogger.log("jar", "spider start site=%s api=%s", key, api);
                 parseJar(jaKey, jar);
                 DexClassLoader loader = loaders.get(jaKey);
                 if (loader == null) {
                     SpiderDebug.log("jar-loader", "spider init skip loader missing site=%s api=%s jar=%s cost=%sms", key, api, jaKey, System.currentTimeMillis() - start);
-                    TraceLogger.log("jar", "spider skip loader missing site=%s api=%s", key, api);
                     return new SpiderNull();
                 }
                 Spider spider = (Spider) loader.loadClass("com.github.catvod.spider." + api.split("csp_")[1]).newInstance();
                 spider.siteKey = key;
-                TraceLogger.log("jar", "spider instance ok site=%s class=%s", key, spider.getClass().getName());
                 spider.init(App.get(), ext);
                 SpiderDebug.log("jar-loader", "spider init done site=%s api=%s jar=%s class=%s cost=%sms", key, api, jaKey, spider.getClass().getName(), System.currentTimeMillis() - start);
-                TraceLogger.log("jar", "spider init done site=%s", key);
                 return spider;
             } catch (Throwable e) {
                 SpiderDebug.log("jar-loader", "spider init error site=%s api=%s jar=%s cost=%sms error=%s", key, api, jaKey, System.currentTimeMillis() - start, error(e));
                 SpiderDebug.log("jar-loader", e);
-                TraceLogger.log("jar", "spider error site=%s error=%s", key, error(e));
                 e.printStackTrace();
                 return new SpiderNull();
             }

@@ -11,7 +11,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 
 public class ApkProvider extends ContentProvider {
-    public static final String AUTHORITY = com.fongmi.android.tv.BuildConfig.APPLICATION_ID + ".apk";
+    public static final String AUTHORITY = "com.moliys.tvbox.apk";
 
     public static File updateDir(Context ctx) {
         File dir = ctx.getExternalFilesDir("update");

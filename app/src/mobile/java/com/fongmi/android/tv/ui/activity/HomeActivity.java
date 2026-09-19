@@ -53,7 +53,6 @@ import com.fongmi.android.tv.web.WebHomeViewport;
 import com.github.catvod.net.OkHttp;
 import com.google.android.material.navigation.NavigationBarView;
 import com.google.gson.JsonObject;
-import com.moliys.tvbox.TraceLogger;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -87,12 +86,10 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     protected void onCreate(Bundle savedInstanceState) {
         setTheme(R.style.Theme_App);
         super.onCreate(savedInstanceState);
-        TraceLogger.log("home", "onCreate");
     }
 
     @Override
     protected void initView(Bundle savedInstanceState) {
-        TraceLogger.log("home", "initView start");
         wideWindow = MobileWindow.isWide(this);
         returnVodFromEnhance = savedInstanceState != null && savedInstanceState.getBoolean(STATE_RETURN_VOD_FROM_ENHANCE);
         currentPosition = savedInstanceState == null ? 0 : savedInstanceState.getInt(STATE_CURRENT_POSITION, 0);
@@ -160,7 +157,6 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     }
 
     private void initConfig() {
-        TraceLogger.log("home", "initConfig start");
         VodConfig.get().config(mStartupConfig == null ? Config.vod() : mStartupConfig).load(getCallback());
         LiveConfig.get().init().load();
         WallConfig.get().init();
@@ -170,13 +166,11 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         return new Callback() {
             @Override
             public void success() {
-                TraceLogger.log("home", "config load success sites=%s", VodConfig.get().getSites() == null ? -1 : VodConfig.get().getSites().size());
                 checkAction(getIntent());
             }
 
             @Override
             public void error(String msg) {
-                TraceLogger.log("home", "config load error=%s", msg);
                 resetVodChrome();
                 checkAction(getIntent());
                 StateEvent.empty();
