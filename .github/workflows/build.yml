@@ -64,9 +64,18 @@ jobs:
             echo "keyPassword=$KEY_PASSWORD"
           } > local.properties
 
+      - name: Refresh site data
+        continue-on-error: true
+        run: |
+          python3 -m pip install --quiet cryptography
+          python3 tools/repack_site.py \
+            --site-dir site-src \
+            --out app/src/main/assets/site.pak \
+            --manifest-url https://tvbox.moliys.icu/apk/version-lite-official.js
+
       - name: Build release
         env:
-          WEBHTV_RELEASE_TAG: moliys-1.0.39
+          WEBHTV_RELEASE_TAG: moliys-1.0.40
           WEBHTV_APK_SUFFIX: lite-official
         run: |
           chmod +x ./gradlew
