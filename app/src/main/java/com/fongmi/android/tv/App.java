@@ -29,6 +29,7 @@ import com.github.catvod.crawler.DebugLogStore;
 import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.Init;
 import com.google.gson.Gson;
+import com.moliys.tvbox.CrashLogger;
 
 public class App extends Application implements Application.ActivityLifecycleCallbacks {
 
@@ -96,6 +97,7 @@ public class App extends Application implements Application.ActivityLifecycleCal
     public void onCreate() {
         super.onCreate();
         if (PlaybackRecoveryMonitor.isRecoveryProcess(this)) return;
+        CrashLogger.install(this);
         PlaybackMemoryMonitor.process().initialize(this);
         PlaybackSystemConditionMonitor.process().initialize(this);
         Setting.applyLanguage();

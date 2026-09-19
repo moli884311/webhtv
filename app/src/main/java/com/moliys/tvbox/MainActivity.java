@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
@@ -35,6 +36,8 @@ import android.content.DialogInterface;
 import android.text.InputType;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.fongmi.android.tv.api.config.VodConfig;
@@ -98,6 +101,8 @@ public class MainActivity extends Activity {
 
         setContentView(root);
 
+        showCrashReport();
+
         applyEdgeToEdge();
         watchInsets(root);
         configureWebView();
@@ -112,6 +117,30 @@ public class MainActivity extends Activity {
             return;
         }
         webView.loadUrl("http://127.0.0.1:" + server.getPort() + "/index.html");
+    }
+
+    private void showCrashReport() {
+        final String report = CrashLogger.read(this);
+        if (report == null || report.isEmpty()) return;
+        int pad = (int) (getResources().getDisplayMetrics().density * 12);
+        TextView text = new TextView(this);
+        text.setText(report);
+        text.setTextSize(10f);
+        text.setTextIsSelectable(true);
+        text.setPadding(pad, pad, pad, pad);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(text);
+        new AlertDialog.Builder(this)
+                .setTitle("上次崩溃 / 退出日志")
+                .setView(scroll)
+                .setPositiveButton("复制", (dialog, which) -> {
+                    ClipboardManager manager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    if (manager != null) manager.setPrimaryClip(ClipData.newPlainText("crash", report));
+                    Toast.makeText(this, "已复制到剪贴板", Toast.LENGTH_SHORT).show();
+                })
+                .setNeutralButton("清除", (dialog, which) -> CrashLogger.clear(this))
+                .setNegativeButton("关闭", null)
+                .show();
     }
 
     /** 若存在加密资源包 assets/site.pak，则启用内存解密读取；否则回退到 assets/html。 */
