@@ -34,8 +34,28 @@ public class LocalServer {
         return port;
     }
 
+    /**
+     * 固定端口，保证 WebView 的 origin 稳定，localStorage（主题等）才能跨启动保留。
+     * 端口被占用时顺延，最后回退随机端口。
+     */
+    private ServerSocket bindPreferred() throws IOException {
+        IOException last = null;
+        for (int p = 47821; p <= 47828; p++) {
+            try {
+                return new ServerSocket(p, 64, InetAddress.getByName("127.0.0.1"));
+            } catch (IOException e) {
+                last = e;
+            }
+        }
+        try {
+            return new ServerSocket(0, 64, InetAddress.getByName("127.0.0.1"));
+        } catch (IOException e) {
+            throw last != null ? last : e;
+        }
+    }
+
     public void start() throws IOException {
-        socket = new ServerSocket(0, 64, InetAddress.getByName("127.0.0.1"));
+        socket = bindPreferred();
         port = socket.getLocalPort();
         running = true;
         Thread t = new Thread(new Runnable() {
