@@ -7,11 +7,13 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 
+import com.fongmi.android.tv.BuildConfig;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 
 public class ApkProvider extends ContentProvider {
-    public static final String AUTHORITY = "com.moliys.tvbox.apk";
+    public static final String AUTHORITY = BuildConfig.APPLICATION_ID + ".apk";
 
     public static File updateDir(Context ctx) {
         File dir = ctx.getExternalFilesDir("update");

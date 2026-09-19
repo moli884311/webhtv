@@ -3,6 +3,8 @@ package com.moliys.tvbox;
 import android.content.res.AssetManager;
 import android.util.Log;
 
+import com.fongmi.android.tv.BuildConfig;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -217,6 +219,9 @@ public class LocalServer {
                     asset.close();
                 }
             }
+            if ("index.html".equals(rel)) {
+                body = injectEditionBootstrap(body);
+            }
             writeHeader(out, 200, "OK", mimeOf(rel), body.length);
             if (!"HEAD".equalsIgnoreCase(method)) {
                 out.write(body);
@@ -240,6 +245,31 @@ public class LocalServer {
                 s.close();
             } catch (IOException ignored) {
             }
+        }
+    }
+
+    /**
+     * 每个版本注入自己的首屏模式：精简版强制简洁页，全能版强制全能页并隐藏切换入口。
+     * 注入点紧跟 head 之后，保证早于页面自身脚本读取 site_mode。
+     */
+    private byte[] injectEditionBootstrap(byte[] html) {
+        String source;
+        try {
+            source = new String(html, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            return html;
+        }
+        String mode = BuildConfig.LITE_EDITION ? "simple" : "full";
+        String bootstrap = "<script>try{localStorage.setItem('site_mode','" + mode
+                + "');}catch(e){}var _st=document.createElement('style');_st.textContent="
+                + "'#modeToggleBtn{display:none!important}';document.head.appendChild(_st);</script>";
+        int idx = source.indexOf("<head>");
+        idx = idx >= 0 ? idx + "<head>".length() : 0;
+        String merged = source.substring(0, idx) + bootstrap + source.substring(idx);
+        try {
+            return merged.getBytes("UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            return html;
         }
     }
 }

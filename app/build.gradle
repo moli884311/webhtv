@@ -35,7 +35,6 @@ android {
     ndkVersion "29.0.14206865"
 
     defaultConfig {
-        applicationId "com.moliys.tvbox"
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
         versionCode 40
@@ -60,9 +59,19 @@ android {
         }
     }
 
-    flavorDimensions = ["mode", "abi"]
+    flavorDimensions = ["mode", "abi", "edition"]
 
     productFlavors {
+        full {
+            dimension "edition"
+            applicationId "com.moliys.tvbox"
+            buildConfigField "boolean", "LITE_EDITION", "false"
+        }
+        jingjian {
+            dimension "edition"
+            applicationId "com.moliys.tvboxjingjian"
+            buildConfigField "boolean", "LITE_EDITION", "true"
+        }
         leanback {
             dimension "mode"
         }
@@ -147,8 +156,9 @@ androidComponents {
         def flavors = variant.productFlavors.collectEntries { [(it.first): it.second] }
         def mode = flavors['mode'] ?: 'mode'
         def abi = flavors['abi'] ?: 'abi'
+        def edition = flavors['edition'] ?: 'edition'
         variant.outputs.each { output ->
-            output.outputFileName.set("${mode}-${abi}${apkSuffix}.apk")
+            output.outputFileName.set("${mode}-${abi}-${edition}${apkSuffix}.apk")
         }
     }
 }

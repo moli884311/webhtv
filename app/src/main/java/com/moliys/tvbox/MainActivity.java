@@ -37,6 +37,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import com.fongmi.android.tv.BuildConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Site;
@@ -637,7 +638,7 @@ public class MainActivity extends Activity {
 
     /** 站点页内注入原生「影视」入口（仅 App 内生效，不影响网页端）。 */
     private void injectVideoEntry(WebView view) {
-        if (view == null) {
+        if (view == null || BuildConfig.LITE_EDITION) {
             return;
         }
         final String js = "(function(){"
@@ -654,7 +655,6 @@ public class MainActivity extends Activity {
                 + "(document.body||document.documentElement).appendChild(b);"
                 + "return b;}"
                 + "mk('影视','110px',function(){try{window.TVBoxNative.openVideo();}catch(e){}});"
-                + "mk('换源','176px',function(){try{window.TVBoxNative.openSites();}catch(e){}});"
                 + "})();";
         try {
             view.evaluateJavascript(js, null);
@@ -872,7 +872,8 @@ public class MainActivity extends Activity {
     public class Bridge {
         @JavascriptInterface
         public String getVersion() {
-            return "{\"code\":" + Version.CODE + ",\"name\":\"" + Version.NAME + "\"}";
+            int code = BuildConfig.LITE_EDITION ? Integer.MAX_VALUE : Version.CODE;
+            return "{\"code\":" + code + ",\"name\":\"" + Version.NAME + "\"}";
         }
 
         @JavascriptInterface

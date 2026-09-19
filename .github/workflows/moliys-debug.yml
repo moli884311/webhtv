@@ -44,7 +44,7 @@ jobs:
       - name: Build
         run: |
           chmod +x ./gradlew
-          ./gradlew :app:assembleMobileArm64_v8aDebug --no-daemon
+          ./gradlew :app:assembleMobileArm64_v8aFullDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

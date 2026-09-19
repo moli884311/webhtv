@@ -70,7 +70,7 @@ jobs:
           WEBHTV_APK_SUFFIX: moliys
         run: |
           chmod +x ./gradlew
-          ./gradlew :app:assembleMobileArm64_v8aRelease --no-daemon
+          ./gradlew :app:assembleMobileArm64_v8aFullRelease :app:assembleMobileArm64_v8aJingjianRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
