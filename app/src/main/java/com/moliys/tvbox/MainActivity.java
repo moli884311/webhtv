@@ -30,21 +30,12 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.ValueCallback;
-import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.text.InputType;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import com.fongmi.android.tv.BuildConfig;
-import com.fongmi.android.tv.api.config.VodConfig;
-import com.fongmi.android.tv.bean.Config;
-import com.fongmi.android.tv.bean.Site;
-import com.fongmi.android.tv.impl.Callback;
 
 import java.io.File;
-import java.util.List;
 
 public class MainActivity extends Activity {
     private static final String TAG = "TVBoxMain";
@@ -386,7 +377,6 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 pageLoaded = true;
                 pushInsets();
-                injectVideoEntry(view);
             }
         });
         webView.addJavascriptInterface(new Bridge(), "TVBoxNative");
@@ -636,239 +626,6 @@ public class MainActivity extends Activity {
         return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
     }
 
-    /** 站点页内注入原生「影视」入口（仅 App 内生效，不影响网页端）。 */
-    private void injectVideoEntry(WebView view) {
-        if (view == null || BuildConfig.LITE_EDITION) {
-            return;
-        }
-        final String js = "(function(){"
-                + "if(window.__moliysTvEntry){return;}"
-                + "window.__moliysTvEntry=true;"
-                + "function mk(txt,bottom,fn){"
-                + "var b=document.createElement('div');"
-                + "b.textContent=txt;"
-                + "b.style.cssText='position:fixed;right:16px;bottom:'+bottom+';z-index:2147483647;"
-                + "padding:10px 18px;border-radius:22px;color:#fff;font-size:15px;font-weight:600;"
-                + "background:linear-gradient(135deg,#1E6FEB,#7A4DFF);"
-                + "box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;user-select:none';"
-                + "b.onclick=fn;"
-                + "(document.body||document.documentElement).appendChild(b);"
-                + "return b;}"
-                + "mk('影视','110px',function(){try{window.TVBoxNative.openVideo();}catch(e){}});"
-                + "})();";
-        try {
-            view.evaluateJavascript(js, null);
-        } catch (Exception ignored) {
-        }
-    }
-
-    /** 影视面板：进入首页 / 切换站源 / 自定义接口。 */
-    private void showVideoPanel() {
-        String[] items = {"进入影视首页", "切换站源", "输入/更换接口"};
-        new AlertDialog.Builder(this)
-                .setTitle("影视")
-                .setItems(items, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        if (which == 0) openVideoHome();
-                        else if (which == 1) loadThenShowSites();
-                        else showInterfaceDialog();
-                    }
-                })
-                .show();
-    }
-
-    /** 确保接口已加载，然后直接进入影视首页。 */
-    private void enterVideo() {
-        final Config cfg = Config.vod();
-        if (cfg == null || cfg.getUrl() == null || cfg.getUrl().length() == 0) {
-            showInterfaceDialog();
-            return;
-        }
-        final List<Site> sites = VodConfig.get().getSites();
-        if (sites != null && !sites.isEmpty()) {
-            openVideoHome();
-            return;
-        }
-        VodConfig.load(cfg, new Callback() {
-            @Override
-            public void success() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        openVideoHome();
-                    }
-                });
-            }
-
-            @Override
-            public void error(String msg) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(MainActivity.this, "接口加载失败，请检查地址", Toast.LENGTH_SHORT).show();
-                        showInterfaceDialog();
-                    }
-                });
-            }
-        });
-    }
-
-    /** 确保当前接口已加载，然后弹出站源列表。 */
-    private void loadThenShowSites() {
-        final Config cfg = Config.vod();
-        if (cfg == null || cfg.getUrl() == null || cfg.getUrl().length() == 0) {
-            showInterfaceDialog();
-            return;
-        }
-        VodConfig.load(cfg, new Callback() {
-            @Override
-            public void success() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        showSiteDialog();
-                    }
-                });
-            }
-
-            @Override
-            public void error(String msg) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(MainActivity.this, "接口加载失败，请检查地址", Toast.LENGTH_SHORT).show();
-                        showInterfaceDialog();
-                    }
-                });
-            }
-        });
-    }
-
-    /** 站源切换弹窗。 */
-    private void showSiteDialog() {
-        final List<Site> sites = VodConfig.get().getSites();
-        if (sites == null || sites.isEmpty()) {
-            showInterfaceDialog();
-            return;
-        }
-        final String[] names = new String[sites.size()];
-        for (int i = 0; i < sites.size(); i++) {
-            names[i] = sites.get(i).getName();
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("选择站源")
-                .setItems(names, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        VodConfig.get().setHome(sites.get(which));
-                        Toast.makeText(MainActivity.this, "已切换：" + names[which], Toast.LENGTH_SHORT).show();
-                        openVideoHome();
-                    }
-                })
-                .setNegativeButton("输入接口", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        showInterfaceDialog();
-                    }
-                })
-                .show();
-    }
-
-    /** 自定义接口输入弹窗（不内置任何接口）。 */
-    private void showInterfaceDialog() {
-        final EditText input = new EditText(this);
-        input.setHint("https://example.com/config.json");
-        input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
-        Config cur = Config.vod();
-        if (cur != null && cur.getUrl() != null) {
-            input.setText(cur.getUrl());
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("输入接口地址")
-                .setView(input)
-                .setPositiveButton("加载", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        String url = input.getText().toString().trim();
-                        if (url.length() == 0) {
-                            return;
-                        }
-                        loadInterface(url);
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    private void loadInterface(final String url) {
-        final Config cfg = Config.create(0, url, "");
-        VodConfig.load(cfg, new Callback() {
-            @Override
-            public void success() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        openVideoHome();
-                    }
-                });
-            }
-
-            @Override
-            public void error(String msg) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(MainActivity.this, "接口加载失败，请检查地址", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        });
-    }
-
-    /** 打开内置影视（webhtv 内核）首页。 */
-    private void openVideoHome() {
-        startFongmi("com.fongmi.android.tv.ui.activity.HomeActivity", null);
-    }
-
-    /** 打开内置直播。 */
-    private void openVideoLive() {
-        startFongmi("com.fongmi.android.tv.ui.activity.LiveActivity", null);
-    }
-
-    /** 以 ACTION_VIEW 交给 webhtv 内核导入接口（单仓/多仓 JSON 地址）。 */
-    private void openVideoInterface(final String url) {
-        if (url == null || url.length() == 0) {
-            return;
-        }
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "导入接口失败", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void startFongmi(final String cls, final String url) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Intent intent = new Intent();
-                    intent.setClassName(getPackageName(), cls);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    if (url != null && url.length() > 0) {
-                        intent.setData(Uri.parse(url));
-                    }
-                    startActivity(intent);
-                } catch (Exception e) {
-                    Toast.makeText(MainActivity.this, "打开影视失败", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-    }
-
     public class Bridge {
         @JavascriptInterface
         public String getVersion() {
@@ -882,25 +639,6 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     applyBarIcons(light);
-                }
-            });
-        }
-
-        @JavascriptInterface
-        public void setOrientation(final String mode) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    if ("portrait".equals(mode)) {
-                        videoOrientation = "portrait";
-                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
-                    } else if ("landscape".equals(mode)) {
-                        videoOrientation = "landscape";
-                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-                    } else {
-                        videoOrientation = "auto";
-                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-                    }
                 }
             });
         }
@@ -951,36 +689,6 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getDownloadDir() {
             return DownloadHelper.dirPath();
-        }
-
-        @JavascriptInterface
-        public void openVideo() {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    enterVideo();
-                }
-            });
-        }
-
-        @JavascriptInterface
-        public void openSites() {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    loadThenShowSites();
-                }
-            });
-        }
-
-        @JavascriptInterface
-        public void openLive() {
-            openVideoLive();
-        }
-
-        @JavascriptInterface
-        public void openInterface(final String url) {
-            openVideoInterface(url);
         }
 
         @JavascriptInterface
