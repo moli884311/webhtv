@@ -643,14 +643,18 @@ public class MainActivity extends Activity {
         final String js = "(function(){"
                 + "if(window.__moliysTvEntry){return;}"
                 + "window.__moliysTvEntry=true;"
+                + "function mk(txt,bottom,fn){"
                 + "var b=document.createElement('div');"
-                + "b.textContent='影视';"
-                + "b.style.cssText='position:fixed;right:16px;bottom:110px;z-index:2147483647;"
+                + "b.textContent=txt;"
+                + "b.style.cssText='position:fixed;right:16px;bottom:'+bottom+';z-index:2147483647;"
                 + "padding:10px 18px;border-radius:22px;color:#fff;font-size:15px;font-weight:600;"
                 + "background:linear-gradient(135deg,#1E6FEB,#7A4DFF);"
                 + "box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;user-select:none';"
-                + "b.onclick=function(){try{window.TVBoxNative.openVideo();}catch(e){}};"
+                + "b.onclick=fn;"
                 + "(document.body||document.documentElement).appendChild(b);"
+                + "return b;}"
+                + "mk('影视','110px',function(){try{window.TVBoxNative.openVideo();}catch(e){}});"
+                + "mk('换源','176px',function(){try{window.TVBoxNative.openSites();}catch(e){}});"
                 + "})();";
         try {
             view.evaluateJavascript(js, null);
@@ -672,6 +676,42 @@ public class MainActivity extends Activity {
                     }
                 })
                 .show();
+    }
+
+    /** 确保接口已加载，然后直接进入影视首页。 */
+    private void enterVideo() {
+        final Config cfg = Config.vod();
+        if (cfg == null || cfg.getUrl() == null || cfg.getUrl().length() == 0) {
+            showInterfaceDialog();
+            return;
+        }
+        final List<Site> sites = VodConfig.get().getSites();
+        if (sites != null && !sites.isEmpty()) {
+            openVideoHome();
+            return;
+        }
+        VodConfig.load(cfg, new Callback() {
+            @Override
+            public void success() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        openVideoHome();
+                    }
+                });
+            }
+
+            @Override
+            public void error(String msg) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(MainActivity.this, "接口加载失败，请检查地址", Toast.LENGTH_SHORT).show();
+                        showInterfaceDialog();
+                    }
+                });
+            }
+        });
     }
 
     /** 确保当前接口已加载，然后弹出站源列表。 */
@@ -769,7 +809,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        showSiteDialog();
+                        openVideoHome();
                     }
                 });
             }
@@ -914,6 +954,16 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openVideo() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    enterVideo();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openSites() {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
