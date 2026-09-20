@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        root.setBackgroundColor(0xFF0F1115);
+        root.setBackgroundColor(MoliysTheme.shellBackground());
         rootView = root;
 
         webView = new WebView(this);
@@ -103,6 +103,7 @@ public class MainActivity extends Activity {
         setContentView(root);
 
         applyEdgeToEdge();
+        applyShellTheme();
         watchInsets(root);
         configureWebView();
 
@@ -215,6 +216,13 @@ public class MainActivity extends Activity {
         applyBarIcons(false);
     }
 
+    private void applyShellTheme() {
+        int bg = MoliysTheme.shellBackground();
+        if (rootView != null) rootView.setBackgroundColor(bg);
+        if (webView != null) webView.setBackgroundColor(bg);
+        applyBarIcons(MoliysTheme.isLight());
+    }
+
     private void applyBarIcons(boolean light) {
         Window w = getWindow();
         if (Build.VERSION.SDK_INT >= 30) {
@@ -305,7 +313,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 26) {
             s.setSafeBrowsingEnabled(false);
         }
-        webView.setBackgroundColor(0xFF0F1115);
+        webView.setBackgroundColor(MoliysTheme.shellBackground());
         webView.setHorizontalScrollBarEnabled(false);
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -1130,9 +1138,15 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    applyBarIcons(light);
+                    MoliysTheme.set(light);
+                    applyShellTheme();
                 }
             });
+        }
+
+        @JavascriptInterface
+        public String getTheme() {
+            return MoliysTheme.toJson();
         }
 
         @JavascriptInterface

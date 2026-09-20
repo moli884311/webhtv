@@ -99,6 +99,7 @@ public class App extends Application implements Application.ActivityLifecycleCal
         PlaybackMemoryMonitor.process().initialize(this);
         PlaybackSystemConditionMonitor.process().initialize(this);
         Setting.applyLanguage();
+        com.moliys.tvbox.MoliysTheme.apply();
         DebugLogStore.restoreEnabled();
         if (DebugLogStore.isEnabled()) {
             PlaybackRecoveryMonitor.logPreviousResult(this);

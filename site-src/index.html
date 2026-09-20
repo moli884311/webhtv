@@ -417,7 +417,7 @@ body:not(.simple-mode) .search-box { margin-bottom: 14px; }
   border: 1px solid var(--border-soft);
   border-radius: 14px;
   overflow: hidden;
-  background: #f0f7ff;
+  background: var(--panel);
 }
 .embed-wrap iframe {
   display: block;
@@ -1211,7 +1211,7 @@ body.simple-mode #api-panel { display: block !important; }
   height: 56px;
   border-radius: 15px;
   box-shadow: 0 3px 9px rgba(15, 23, 42, .2);
-  background: #fff;
+  background: var(--card);
   object-fit: cover;
 }
 
@@ -1720,7 +1720,7 @@ html.native-app .fm365-wrap {
   border: 1px solid var(--border-soft);
   border-radius: 14px;
   overflow: hidden;
-  background: #f0f7ff;
+  background: var(--panel);
 }
 @media (max-height: 520px) {
   html.native-app .fm365-wrap { height: calc(100vh - 170px); min-height: 220px; }
@@ -1747,7 +1747,7 @@ html.native-app .embed-wrap {
   border: 1px solid var(--border-soft);
   border-radius: 14px;
   overflow: hidden;
-  background: #f0f7ff;
+  background: var(--panel);
 }
 @media (max-height: 520px) {
   html.native-app .embed-wrap { height: calc(100vh - 170px); min-height: 220px; }
@@ -2033,102 +2033,102 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 
     <!-- 关于面板 -->
     <div class="tab-panel" id="about-panel">
-      <div style="background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:12px;border:1px solid #eef2f7">
-        <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:8px">🌐 备份线路域名</h3>
-        <p style="margin-bottom:6px;font-size:.76rem;color:#5a6f88">四个域名互为备份，任一个可用：</p>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:1;font-size:.75rem;color:#2563eb">https://tvbox.moliys.icu</span>
+      <div style="background:var(--panel);border-radius:12px;padding:14px 16px;margin-bottom:12px;border:1px solid var(--border-soft)">
+        <h3 style="font-size:.92rem;font-weight:600;color:var(--text-strong);margin-bottom:8px">🌐 备份线路域名</h3>
+        <p style="margin-bottom:6px;font-size:.76rem;color:var(--text2)">四个域名互为备份，任一个可用：</p>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:1;font-size:.75rem;color:var(--accent-2)">https://tvbox.moliys.icu</span>
           <button class="copy-btn" data-url="https://tvbox.moliys.icu">复制</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:1;font-size:.75rem;color:#2563eb">https://0.12yue.de5.net</span>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:1;font-size:.75rem;color:var(--accent-2)">https://0.12yue.de5.net</span>
           <button class="copy-btn" data-url="https://0.12yue.de5.net">复制</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:1;font-size:.75rem;color:#2563eb">https://0.cdz.qzz.io</span>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:1;font-size:.75rem;color:var(--accent-2)">https://0.cdz.qzz.io</span>
           <button class="copy-btn" data-url="https://0.cdz.qzz.io">复制</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:1;font-size:.75rem;color:#2563eb">https://0.wdzb.eu.cc</span>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:1;font-size:.75rem;color:var(--accent-2)">https://0.wdzb.eu.cc</span>
           <button class="copy-btn" data-url="https://0.wdzb.eu.cc">复制</button>
         </div>
       </div>
       <!-- 合作共创 -->
-      <div id="contributors-card" style="background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:12px;border:1px solid #eef2f7">
-        <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:4px">🤝 合作共创</h3>
-        <p style="font-size:.76rem;color:#5a6f88;margin-bottom:4px">感谢以下伙伴对本站的内容贡献与支持（<strong style="color:#ca8a04">排名不分先后</strong>）：</p>
+      <div id="contributors-card" style="background:var(--panel);border-radius:12px;padding:14px 16px;margin-bottom:12px;border:1px solid var(--border-soft)">
+        <h3 style="font-size:.92rem;font-weight:600;color:var(--text-strong);margin-bottom:4px">🤝 合作共创</h3>
+        <p style="font-size:.76rem;color:var(--text2);margin-bottom:4px">感谢以下伙伴对本站的内容贡献与支持（<strong style="color:#ca8a04">排名不分先后</strong>）：</p>
         <div class="contributor-grid" id="contributors-list">
           <div class="loading">⏳ 正在加载贡献者...</div>
         </div>
-        <p style="font-size:.68rem;color:#8fa3b8;margin-top:10px;line-height:1.5;font-style:italic">* 还有部分贡献者因未留下署名信息而未在此列出，同样感谢你们的默默付出。如有遗漏请联系站长补充。</p>
+        <p style="font-size:.68rem;color:var(--text2);margin-top:10px;line-height:1.5;font-style:italic">* 还有部分贡献者因未留下署名信息而未在此列出，同样感谢你们的默默付出。如有遗漏请联系站长补充。</p>
       </div>
-                  <div style="background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:12px;border:1px solid #eef2f7">
-        <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:8px">💬 弹幕使用教程</h3>
-        <p style="font-size:.76rem;color:#5a6f88;line-height:1.7">两种壳子填的东西不一样，按自己壳子的类型选对应的一段。</p>
+                  <div style="background:var(--panel);border-radius:12px;padding:14px 16px;margin-bottom:12px;border:1px solid var(--border-soft)">
+        <h3 style="font-size:.92rem;font-weight:600;color:var(--text-strong);margin-bottom:8px">💬 弹幕使用教程</h3>
+        <p style="font-size:.76rem;color:var(--text2);line-height:1.7">两种壳子填的东西不一样，按自己壳子的类型选对应的一段。</p>
 
-        <p style="font-size:.78rem;color:#0b1e33;font-weight:600;margin-top:12px">① new 壳子：只填源本身</p>
-        <p style="font-size:.74rem;color:#5a6f88;line-height:1.7;margin-top:2px">new 是单独一类壳子，它的弹幕接口只需要填弹幕源地址本身，填好后播放时会自动按片名+集数拉取弹幕。</p>
-        <p style="font-size:.74rem;color:#5a6f88;margin-top:6px">弹幕接口：<code style="font-size:.72rem;color:#2563eb;background:#eef3fa;border-radius:4px;padding:1px 5px">{弹幕源地址}</code></p>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:#0b1e33">ecs源</span>
-          <span style="flex:1;font-size:.72rem;color:#2563eb;word-break:break-all">http://ecs.dysobo.cn:9321/87654321</span>
+        <p style="font-size:.78rem;color:var(--text-strong);font-weight:600;margin-top:12px">① new 壳子：只填源本身</p>
+        <p style="font-size:.74rem;color:var(--text2);line-height:1.7;margin-top:2px">new 是单独一类壳子，它的弹幕接口只需要填弹幕源地址本身，填好后播放时会自动按片名+集数拉取弹幕。</p>
+        <p style="font-size:.74rem;color:var(--text2);margin-top:6px">弹幕接口：<code style="font-size:.72rem;color:var(--accent-2);background:var(--tagbg);border-radius:4px;padding:1px 5px">{弹幕源地址}</code></p>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:var(--text-strong)">ecs源</span>
+          <span style="flex:1;font-size:.72rem;color:var(--accent-2);word-break:break-all">http://ecs.dysobo.cn:9321/87654321</span>
           <button class="copy-btn" data-url="http://ecs.dysobo.cn:9321/87654321">复制</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:#0b1e33">量大</span>
-          <span style="flex:1;font-size:.72rem;color:#2563eb;word-break:break-all">http://38.207.186.41/87654321</span>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:var(--text-strong)">量大</span>
+          <span style="flex:1;font-size:.72rem;color:var(--accent-2);word-break:break-all">http://38.207.186.41/87654321</span>
           <button class="copy-btn" data-url="http://38.207.186.41/87654321">复制</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:#0b1e33">sym源</span>
-          <span style="flex:1;font-size:.72rem;color:#2563eb;word-break:break-all">https://danmu1.sym9233.dpdns.org/87654321</span>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:var(--text-strong)">sym源</span>
+          <span style="flex:1;font-size:.72rem;color:var(--accent-2);word-break:break-all">https://danmu1.sym9233.dpdns.org/87654321</span>
           <button class="copy-btn" data-url="https://danmu1.sym9233.dpdns.org/87654321">复制</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:#0b1e33">777775源</span>
-          <span style="flex:1;font-size:.72rem;color:#2563eb;word-break:break-all">https://danmu.7777735.xyz/87654321</span>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:var(--text-strong)">777775源</span>
+          <span style="flex:1;font-size:.72rem;color:var(--accent-2);word-break:break-all">https://danmu.7777735.xyz/87654321</span>
           <button class="copy-btn" data-url="https://danmu.7777735.xyz/87654321">复制</button>
         </div>
 
-        <p style="font-size:.78rem;color:#0b1e33;font-weight:600;margin-top:14px">② 需要搜索接口的壳子：填下面的搜索接口</p>
-        <p style="font-size:.74rem;color:#5a6f88;line-height:1.7;margin-top:2px">如果你的壳子弹幕里需要填搜索接口，就填下面的完整地址；播放器会按片名和集数去拉弹幕。</p>
-        <p style="font-size:.74rem;color:#5a6f88;margin-top:6px">搜索接口：<code style="font-size:.72rem;color:#2563eb;background:#eef3fa;border-radius:4px;padding:1px 5px">{弹幕源地址}/api/v2/fongmi/danmaku?name={name}&amp;episode={episode}</code></p>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:#0b1e33">ecs源</span>
-          <span style="flex:1;font-size:.72rem;color:#2563eb;word-break:break-all">http://ecs.dysobo.cn:9321/87654321/api/v2/fongmi/danmaku?name={name}&amp;episode={episode}</span>
+        <p style="font-size:.78rem;color:var(--text-strong);font-weight:600;margin-top:14px">② 需要搜索接口的壳子：填下面的搜索接口</p>
+        <p style="font-size:.74rem;color:var(--text2);line-height:1.7;margin-top:2px">如果你的壳子弹幕里需要填搜索接口，就填下面的完整地址；播放器会按片名和集数去拉弹幕。</p>
+        <p style="font-size:.74rem;color:var(--text2);margin-top:6px">搜索接口：<code style="font-size:.72rem;color:var(--accent-2);background:var(--tagbg);border-radius:4px;padding:1px 5px">{弹幕源地址}/api/v2/fongmi/danmaku?name={name}&amp;episode={episode}</code></p>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:var(--text-strong)">ecs源</span>
+          <span style="flex:1;font-size:.72rem;color:var(--accent-2);word-break:break-all">http://ecs.dysobo.cn:9321/87654321/api/v2/fongmi/danmaku?name={name}&amp;episode={episode}</span>
           <button class="copy-btn" data-url="http://ecs.dysobo.cn:9321/87654321/api/v2/fongmi/danmaku?name={name}&episode={episode}">复制</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:#0b1e33">量大</span>
-          <span style="flex:1;font-size:.72rem;color:#2563eb;word-break:break-all">http://38.207.186.41/87654321/api/v2/fongmi/danmaku?name={name}&amp;episode={episode}</span>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:var(--text-strong)">量大</span>
+          <span style="flex:1;font-size:.72rem;color:var(--accent-2);word-break:break-all">http://38.207.186.41/87654321/api/v2/fongmi/danmaku?name={name}&amp;episode={episode}</span>
           <button class="copy-btn" data-url="http://38.207.186.41/87654321/api/v2/fongmi/danmaku?name={name}&episode={episode}">复制</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:#0b1e33">sym源</span>
-          <span style="flex:1;font-size:.72rem;color:#2563eb;word-break:break-all">https://danmu1.sym9233.dpdns.org/87654321/api/v2/fongmi/danmaku?name={name}&amp;episode={episode}</span>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:var(--text-strong)">sym源</span>
+          <span style="flex:1;font-size:.72rem;color:var(--accent-2);word-break:break-all">https://danmu1.sym9233.dpdns.org/87654321/api/v2/fongmi/danmaku?name={name}&amp;episode={episode}</span>
           <button class="copy-btn" data-url="https://danmu1.sym9233.dpdns.org/87654321/api/v2/fongmi/danmaku?name={name}&episode={episode}">复制</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:6px">
-          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:#0b1e33">777775源</span>
-          <span style="flex:1;font-size:.72rem;color:#2563eb;word-break:break-all">https://danmu.7777735.xyz/87654321/api/v2/fongmi/danmaku?name={name}&amp;episode={episode}</span>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:6px">
+          <span style="flex:0 0 auto;font-size:.72rem;font-weight:600;color:var(--text-strong)">777775源</span>
+          <span style="flex:1;font-size:.72rem;color:var(--accent-2);word-break:break-all">https://danmu.7777735.xyz/87654321/api/v2/fongmi/danmaku?name={name}&amp;episode={episode}</span>
           <button class="copy-btn" data-url="https://danmu.7777735.xyz/87654321/api/v2/fongmi/danmaku?name={name}&episode={episode}">复制</button>
         </div>
 
-        <p style="margin-top:12px;font-size:.74rem;color:#5a6f88;line-height:1.8">
-          <strong style="color:#0b1e33">使用步骤：</strong><br>
+        <p style="margin-top:12px;font-size:.74rem;color:var(--text2);line-height:1.8">
+          <strong style="color:var(--text-strong)">使用步骤：</strong><br>
           1. 先确认壳子类型：new 壳子只填源地址，需要搜索接口的壳子填完整地址<br>
           2. 播放器 → 设置 → 弹幕，把对应地址粘贴进去并保存<br>
           3. 播放时自动匹配弹幕；搜不到就换一个源
         </p>
-        <p style="margin-top:8px;font-size:.72rem;color:#8b9eb0;line-height:1.7">提示：<code>{name}</code> 与 <code>{episode}</code> 是占位符，原样保留不要改成具体片名；更多弹幕源见上方「弹幕」标签页。</p>
+        <p style="margin-top:8px;font-size:.72rem;color:var(--text2);line-height:1.7">提示：<code>{name}</code> 与 <code>{episode}</code> 是占位符，原样保留不要改成具体片名；更多弹幕源见上方「弹幕」标签页。</p>
       </div>
-<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:12px;border:1px solid #eef2f7">
-        <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:8px">📢 声明与联系</h3>
+<div style="background:var(--panel);border-radius:12px;padding:14px 16px;margin-bottom:12px;border:1px solid var(--border-soft)">
+        <h3 style="font-size:.92rem;font-weight:600;color:var(--text-strong);margin-bottom:8px">📢 声明与联系</h3>
         <ul style="padding-left:16px">
-          <li style="font-size:.76rem;color:#5a6f88;line-height:1.6">本站接口资源由【误道者】整理。所有资源均来自互联网，版权归原作者所有。仅供测试学习使用，请勿用于违法及商业用途，请勿付费购买。如涉及侵权，请联系删除。</li>
+          <li style="font-size:.76rem;color:var(--text2);line-height:1.6">本站接口资源由【误道者】整理。所有资源均来自互联网，版权归原作者所有。仅供测试学习使用，请勿用于违法及商业用途，请勿付费购买。如涉及侵权，请联系删除。</li>
         </ul>
-        <p style="margin-top:10px;font-size:.76rem;color:#5a6f88">QQ 交流群：<strong style="color:#4a9eff">367018090</strong></p>
-        <p style="margin-top:10px;font-size:.76rem;color:#5a6f88">Telegram群组：<strong style="color:#4a9eff">https://t.me/+nrWtFerPAfcwOTg9</strong></p>
+        <p style="margin-top:10px;font-size:.76rem;color:var(--text2)">QQ 交流群：<strong style="color:#4a9eff">367018090</strong></p>
+        <p style="margin-top:10px;font-size:.76rem;color:var(--text2)">Telegram群组：<strong style="color:#4a9eff">https://t.me/+nrWtFerPAfcwOTg9</strong></p>
       </div>
     </div>
 
@@ -2145,17 +2145,51 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 const MODE_KEY = 'site_mode';
 const THEME_KEY = 'site_theme';
 /* 站点版本号：每次修复/变更后末位 +1，例如 3.0.0 -> 3.0.1 */
-const SITE_VERSION = '3.0.39';
+const SITE_VERSION = '3.0.40';
 const versionEl = document.getElementById('siteVersion');
 if (versionEl) versionEl.textContent = 'v' + SITE_VERSION;
 const btn = document.getElementById('modeToggleBtn');
 const themeBtn = document.getElementById('themeToggleBtn');
-let currentTheme = localStorage.getItem(THEME_KEY) || 'dark';
+/* 主题：站点开关为唯一开关；未保存时优先读取原生已存主题，其次跟随系统 */
+const OUR_EMBEDS = ['duanju.moliys.icu', 'img.moliys.icu'];
+function initialTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch (e) {}
+  try {
+    if (window.TVBoxNative && typeof window.TVBoxNative.getTheme === 'function') {
+      const native = JSON.parse(window.TVBoxNative.getTheme() || '{}');
+      if (native && native.saved) return native.light ? 'light' : 'dark';
+    }
+  } catch (e) {}
+  try {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+  } catch (e) {}
+  return 'dark';
+}
+function embedUrl(url, theme) {
+  if (!url) return url;
+  try {
+    if (!OUR_EMBEDS.some(function (h) { return url.indexOf(h) > -1; })) return url;
+    return url + (url.indexOf('?') > -1 ? '&' : '?') + 'theme=' + (theme === 'light' ? 'light' : 'dark');
+  } catch (e) { return url; }
+}
+function refreshEmbeds(theme) {
+  document.querySelectorAll('.embed-wrap iframe[data-src]').forEach(function (f) {
+    if (!f.getAttribute('src')) return;
+    const panel = f.closest('.tab-panel');
+    if (panel && panel.classList.contains('active')) return;
+    f.setAttribute('src', embedUrl(f.getAttribute('data-src'), theme));
+  });
+}
+let currentTheme = initialTheme();
 function applyTheme(t) {
   currentTheme = t;
   document.body.setAttribute('data-theme', t);
-  localStorage.setItem(THEME_KEY, t);
+  try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
   if (themeBtn) themeBtn.textContent = t === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+  refreshEmbeds(t);
 }
 applyTheme(currentTheme);
 if (themeBtn) themeBtn.addEventListener('click', function () {
@@ -3029,19 +3063,19 @@ function renderDanmu() {
     let rows = '';
     DANMU_SOURCES.forEach(s => {
       const api = danmuApiUrl(s, tpl);
-      rows += `<div class="danmu-item" data-name="${esc((s.name || '').toLowerCase())}" style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:8px">
-        <span class="danmu-dot" data-url="${esc(s.url)}" style="flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:#cbd5e1" title="检测中..."></span>
-        <span style="flex:0 0 auto;font-size:.78rem;font-weight:600;color:#0b1e33">${esc(s.name)}</span>
-        <span style="flex:1;font-size:.75rem;color:#2563eb;word-break:break-all">${esc(s.url)}</span>
+      rows += `<div class="danmu-item" data-name="${esc((s.name || '').toLowerCase())}" style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--card);border-radius:50px;border:1px solid var(--border-soft);margin-top:8px">
+        <span class="danmu-dot" data-url="${esc(s.url)}" style="flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--border)" title="检测中..."></span>
+        <span style="flex:0 0 auto;font-size:.78rem;font-weight:600;color:var(--text-strong)">${esc(s.name)}</span>
+        <span style="flex:1;font-size:.75rem;color:var(--accent-2);word-break:break-all">${esc(s.url)}</span>
         <button class="danmu-apply-btn" type="button" data-name="${esc(s.name)}" data-url="${esc(api)}" title="把该弹幕接口应用到沫离 App">应用</button>
         <button class="copy-btn" data-url="${esc(s.url)}">复制</button>
       </div>`;
     });
-    container.innerHTML = `<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;border:1px solid #eef2f7">
-      <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:4px">💬 弹幕接口</h3>
-      <p style="font-size:.76rem;color:#5a6f88;margin-bottom:4px">共 ${DANMU_SOURCES.length} 条，列表显示弹幕源地址，「复制」复制源地址给其它壳子，「应用」一键写入沫离 App。</p>
-      <p style="font-size:.72rem;color:#8b9eb0;margin-bottom:4px">应用时自动拼接：<code style="font-size:.7rem;color:#2563eb;background:#eef3fa;border-radius:4px;padding:1px 5px">{源地址}${esc(tpl)}</code></p>
-      <p style="font-size:.72rem;color:#8b9eb0;margin-bottom:4px">状态：<span style="color:#22c55e">●</span> 可访问　<span style="color:#ef4444">●</span> 无法访问　<span style="color:#cbd5e1">●</span> 检测中</p>
+    container.innerHTML = `<div style="background:var(--panel);border-radius:12px;padding:14px 16px;border:1px solid var(--border-soft)">
+      <h3 style="font-size:.92rem;font-weight:600;color:var(--text-strong);margin-bottom:4px">💬 弹幕接口</h3>
+      <p style="font-size:.76rem;color:var(--text2);margin-bottom:4px">共 ${DANMU_SOURCES.length} 条，列表显示弹幕源地址，「复制」复制源地址给其它壳子，「应用」一键写入沫离 App。</p>
+      <p style="font-size:.72rem;color:var(--text2);margin-bottom:4px">应用时自动拼接：<code style="font-size:.7rem;color:var(--accent-2);background:var(--tagbg);border-radius:4px;padding:1px 5px">{源地址}${esc(tpl)}</code></p>
+      <p style="font-size:.72rem;color:var(--text2);margin-bottom:4px">状态：<span style="color:#22c55e">●</span> 可访问　<span style="color:#ef4444">●</span> 无法访问　<span style="color:var(--text2)">●</span> 检测中</p>
       ${rows}
     </div>`;
     container.querySelectorAll('.danmu-apply-btn').forEach(btn => {
@@ -3090,9 +3124,9 @@ function renderEpg() {
         <button class="copy-btn" data-url="${esc(s.url)}">复制</button>
       </div>`;
     });
-    container.innerHTML = `<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;border:1px solid #eef2f7">
-      <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:4px">📺 EPG 接口</h3>
-      <p style="font-size:.76rem;color:#5a6f88;margin-bottom:6px">共 ${EPG_SOURCES.length} 个电子节目单接口（社区推荐收录）。用法：TVBox / 影视 → 设置 → 直播 → EPG 接口地址 → 粘贴下面地址。XMLTV 为标准 xmltv 格式，DIYP 为 DIYP 类播放器的网页接口，「推荐」为社区整合的合集地址。</p>
+    container.innerHTML = `<div style="background:var(--panel);border-radius:12px;padding:14px 16px;border:1px solid var(--border-soft)">
+      <h3 style="font-size:.92rem;font-weight:600;color:var(--text-strong);margin-bottom:4px">📺 EPG 接口</h3>
+      <p style="font-size:.76rem;color:var(--text2);margin-bottom:6px">共 ${EPG_SOURCES.length} 个电子节目单接口（社区推荐收录）。用法：TVBox / 影视 → 设置 → 直播 → EPG 接口地址 → 粘贴下面地址。XMLTV 为标准 xmltv 格式，DIYP 为 DIYP 类播放器的网页接口，「推荐」为社区整合的合集地址。</p>
       <div class="epg-list">${rows}</div>
     </div>`;
   });
@@ -3132,9 +3166,9 @@ function renderYinyuan() {
           </div>
         </div>`;
       });
-      container.innerHTML = `<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;border:1px solid #eef2f7">
-        <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:4px">🎵 落雪音源</h3>
-        <p style="font-size:.76rem;color:#5a6f88;margin-bottom:4px">共 ${list.length} 个音源，点击「复制」后打开洛雪音乐 → 设置 → 自定义音源 → 粘贴地址导入并启用。</p>
+      container.innerHTML = `<div style="background:var(--panel);border-radius:12px;padding:14px 16px;border:1px solid var(--border-soft)">
+        <h3 style="font-size:.92rem;font-weight:600;color:var(--text-strong);margin-bottom:4px">🎵 落雪音源</h3>
+        <p style="font-size:.76rem;color:var(--text2);margin-bottom:4px">共 ${list.length} 个音源，点击「复制」后打开洛雪音乐 → 设置 → 自定义音源 → 粘贴地址导入并启用。</p>
         <div class="api-list">${rows}</div>
       </div>`;
     })
@@ -3162,12 +3196,12 @@ function renderShuyuan() {
         <div class="api-item-urls">
           <div class="url-line"><span class="url-tag">导入</span><span class="url-text">${esc(s.url)}</span><button class="copy-btn" data-url="${esc(s.url)}">复制</button></div>
         </div>
-        ${s.desc ? `<div style="font-size:.68rem;color:#8b9eb0;margin-top:6px">${esc(s.desc)}</div>` : ''}
+        ${s.desc ? `<div style="font-size:.68rem;color:var(--text2);margin-top:6px">${esc(s.desc)}</div>` : ''}
       </div>`;
     });
-    container.innerHTML = `<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;border:1px solid #eef2f7">
-      <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:4px">📚 书源收集</h3>
-      <p style="font-size:.76rem;color:#5a6f88;margin-bottom:4px">共 ${SHUYUAN_SOURCES.length} 组书源。使用方法：阅读3.0（Legado）→ 我的 → 书源管理 → 右上角菜单 → 网络导入 → 粘贴地址 → 确定。</p>
+    container.innerHTML = `<div style="background:var(--panel);border-radius:12px;padding:14px 16px;border:1px solid var(--border-soft)">
+      <h3 style="font-size:.92rem;font-weight:600;color:var(--text-strong);margin-bottom:4px">📚 书源收集</h3>
+      <p style="font-size:.76rem;color:var(--text2);margin-bottom:4px">共 ${SHUYUAN_SOURCES.length} 组书源。使用方法：阅读3.0（Legado）→ 我的 → 书源管理 → 右上角菜单 → 网络导入 → 粘贴地址 → 确定。</p>
       <div class="api-list">${rows}</div>
     </div>`;
   });
@@ -3202,9 +3236,9 @@ function renderComic() {
           </div>` : ''}
         </div>`;
       });
-      container.innerHTML = `<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;border:1px solid #eef2f7">
-        <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:4px">📖 漫画源</h3>
-        <p style="font-size:.76rem;color:#5a6f88;margin-bottom:8px">共 ${arr.length} 个 Legado 漫画源（已剔除成人向）。使用方法：阅读3.0（Legado）→ 我的 → 书源管理 → 右上角菜单 → 网络导入 → 粘贴下面地址 → 确定。</p>
+      container.innerHTML = `<div style="background:var(--panel);border-radius:12px;padding:14px 16px;border:1px solid var(--border-soft)">
+        <h3 style="font-size:.92rem;font-weight:600;color:var(--text-strong);margin-bottom:4px">📖 漫画源</h3>
+        <p style="font-size:.76rem;color:var(--text2);margin-bottom:8px">共 ${arr.length} 个 Legado 漫画源（已剔除成人向）。使用方法：阅读3.0（Legado）→ 我的 → 书源管理 → 右上角菜单 → 网络导入 → 粘贴下面地址 → 确定。</p>
         <div class="comic-import-box">
           <div class="url-line"><span class="url-tag">导入</span><span class="url-text">${COMIC_SOURCE_URL}</span><button class="copy-btn" data-url="${COMIC_SOURCE_URL}">复制</button></div>
         </div>
@@ -3262,7 +3296,7 @@ function parseSetStatus(id, text, ok) {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = text || '';
-  el.style.color = ok === true ? '#3b9b6c' : (ok === false ? '#dc2626' : '#8fa3b8');
+  el.style.color = ok === true ? '#3b9b6c' : (ok === false ? '#dc2626' : 'var(--text2)');
 }
 
 function parseFallbackCopy(text, done) {
@@ -3601,7 +3635,7 @@ function showPanel(tabId) {
   if (panel) panel.classList.add('active');
   if (panel) {
     const ef = panel.querySelector('.embed-wrap iframe[data-src]');
-    if (ef && !ef.getAttribute('src')) ef.setAttribute('src', ef.getAttribute('data-src'));
+    if (ef && !ef.getAttribute('src')) ef.setAttribute('src', embedUrl(ef.getAttribute('data-src'), currentTheme));
   }
   if (tabId === 'parse') renderParse();
   if (tabId === 'convert') renderConvert();
@@ -3952,7 +3986,7 @@ ensureConfig().then(() => {
     frame.id = 'imgbedFrame';
     frame.setAttribute('allow', 'clipboard-write; clipboard-read; fullscreen');
     frame.setAttribute('referrerpolicy', 'no-referrer');
-    frame.setAttribute('src', IMG_URL);
+    frame.setAttribute('src', embedUrl(IMG_URL, currentTheme));
     wrap.appendChild(frame);
     var tip = document.createElement('div');
     tip.className = 'embed-tip';
@@ -4005,7 +4039,7 @@ ensureConfig().then(() => {
     frame.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
     frame.setAttribute('allowfullscreen', 'true');
     frame.setAttribute('referrerpolicy', 'no-referrer');
-    frame.setAttribute('src', DJ_URL);
+    frame.setAttribute('src', embedUrl(DJ_URL, currentTheme));
     wrap.appendChild(frame);
     var tip = document.createElement('div');
     tip.className = 'embed-tip';
