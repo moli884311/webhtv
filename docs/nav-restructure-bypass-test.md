@@ -55,7 +55,16 @@
 - [ ] 已授权：三者分别进入 原生影视首页 / 原生直播 / 原生设置页
 - [ ] 关于标签连点 6 次仍可打开授权面板
 
-## 6. 回滚
+## 6. 交付记录
+
+- 代码提交：`f12c905cd5f3a0de70dba3686edf9a272f2d57ad`（branch `bypass-test`，fork `moli884311/webhtv`）
+- CI：run `35497781938`（commit f12c905c）**success**
+- 产物校验：package `com.fongmi.android.tvceshi`，versionCode `43`，versionName `1.0.42`
+- APK SHA256：`caea696d0525a5bda7320117ae1ab210583fb2e6c3746b46e16c9ff3364c102c`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.42.apk`（141366879 字节，HTTP 200）
+- 待办：真机按第 5 节验收；通过后可同步 `过包名版本正式版`
+
+## 7. 回滚
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
 - 原生：`git revert` 对应提交，或恢复 `MainActivity.java` 中 `injectVideoEntry` 的悬浮按钮分支与 Bridge 方法。
