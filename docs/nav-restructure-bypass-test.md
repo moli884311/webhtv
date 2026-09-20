@@ -688,3 +688,61 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.60.apk`（HTTP 206，远端 141384715 字节）
 - 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
 - 待办：真机确认 白天 影视主页工具栏图标 / 分类栏 / 底部导航 / 直播频道与分组文字 / 直播面板来源图标 全部清晰可见；黑夜观感与 1.0.59 一致
+
+## 26. 原生壳调色板严格对齐站点（1.0.61）
+
+反馈（附 3 张截图 + 站点 CSS 变量表）：夜晚模式的背景不是纯黑，而是偏蓝黑的「科技感」配色，并给出站点 `:root` 与 `body[data-theme="dark"]` 两套变量，要求原生壳配色与之对齐。1.0.60 的图标可见性修复已生效（截图 3 的搜索 / 最近观看 / 右上角三个点均为白色可见）。
+
+### 排查结论
+
+- **站点变量是权威来源**：`site-src/index.html:25-45`（`:root` 白天）与 `site-src/index.html:47-66`（`body[data-theme="dark"]` 黑夜）。与用户提供的变量表逐项一致。
+- **原生壳黑夜底仍是纯黑**：`app/src/main/res/values-night/moliys_shell.xml:3` 的 `moliys_bg = #FF0F1115`，以及 `MoliysTheme.java:20` 的 `SHELL_DARK = 0xFF0F1115`。站点黑夜 `--bg` 是 `#0d1420`（蓝黑）。
+- **黑夜中间色也是冷灰而非站点的蓝灰**：`values-night/moliys_theme.xml` 原为 `surface #161B22` / `surface_variant #1E2733` / `on_surface #E6EDF5` / `on_surface_variant #9AA9BB` / `outline #2B3948` 等，与站点 `--card #141f31` / `--panel #101a2b` / `--text #dbe6f2` / `--text2 #8fa6c4` / `--border #223650` 存在可见色偏。
+- **下载管理页自带一套硬编码深色**：`DownloadActivity.java:37-42` 直接写死 `BG/CARD/TEXT/SUB/ACCENT/DANGER`，其中 `BG = 0xFF0F1115` 同为纯黑，且它在 `AndroidManifest.xml:173` 用 `@style/Theme.MoliysShell`，窗口底已是新色，根视图却用旧纯黑覆盖，会与其余页面不一致。
+
+### 站点变量到原生属性映射
+
+| 站点变量 | 黑夜取值 | 原生资源 | 白天取值 |
+|---|---|---|---|
+| `--bg` | `#0d1420` | `moliys_bg`（`values*/moliys_shell.xml`）+ `MoliysTheme.SHELL_DARK` | `#eef2f7` / `SHELL_LIGHT` |
+| `--card` | `#141f31` | `moliys_surface` | `#ffffff` |
+| `--panel` | `#101a2b` | `moliys_surface_variant` | `#e4ebf3`（`--border-soft`） |
+| `--border` | `#223650` | `moliys_outline` | `#d4dbe5` |
+| `--text` | `#dbe6f2` | `moliys_on_surface` | `#1a2b3d` |
+| `--text2` | `#8fa6c4` | `moliys_on_surface_variant` | `#7a8fa3` |
+| `--accent` / `--accent-2` | `#4a9eff` | `moliys_primary` | `#2563eb` |
+| `--tagbg` | `rgba(74,158,255,.16)` | `moliys_primary_container` = 叠加到 `--card` 后的实色 `#1d3352` | `#d8e8f8` |
+| `--tagtext` | `#7fb0e8` | `moliys_on_primary_container` | `#3a5a7a` |
+| `--urlborder` | `#1e2f47` | `moliys_secondary_container` | `#e4ebf3` |
+| `--text-strong` | `#eef4fb` | `moliys_on_secondary_container` | `#0a1a2b` |
+
+### 方案
+
+1. `values-night/moliys_shell.xml`：`moliys_bg` `#FF0F1115` → `#FF0D1420`。
+2. `values/moliys_shell.xml`：`moliys_bg` `#FFF1F5FA` → `#FFEEF2F7`（对齐 `--bg`）。
+3. `MoliysTheme.java`：`SHELL_LIGHT = 0xFFEEF2F7`、`SHELL_DARK = 0xFF0D1420`，与资源常量保持一致。
+4. `values-night/moliys_theme.xml`：11 个颜色按上表黑夜列全部替换。
+5. `values/moliys_theme.xml`：`on_surface_variant` / `primary_container` / `on_primary_container` / `secondary_container` / `on_secondary_container` 按上表白天列对齐；`surface` / `outline` / `on_surface` / `primary` 本已一致保持不变。
+6. `DownloadActivity.java`：6 个常量对齐站点黑夜列 —— `BG=--bg`、`CARD=--card`、`TEXT=--text`、`SUB=--text2`、`ACCENT=--accent`、`DANGER=--bad`（`#F87171`）。
+
+### 一个刻意的例外
+
+白天 `moliys_surface_variant` 取 `--border-soft #e4ebf3`，未取 `--panel #f8fafd`。原因是该色承载「未选中态」：`selector_live.xml` 的默认项与 `bg_year.xml` 都直接用它，而它们在白天位于 `colorSurface = #ffffff` 之上；若取 `#f8fafd` 会与白色卡片几乎无差别导致未选中态看不清。黑夜侧不存在此问题（`--panel #101a2b` 本就比 `--bg #0d1420` 亮），故黑夜 `surface_variant` 严格取 `--panel`。
+
+### 校验
+
+- 4 个 XML 全部通过 `xml.etree.ElementTree` 良构解析。
+- 逐项断言：白天 11 项 + 黑夜 11 项颜色等于站点对应变量，不匹配数 0；`values-night` 内 `0F1115` 残留为 False。
+- `DownloadActivity.java` 6 个常量逐项断言通过，文件内 `0F1115` 残留为 False。
+- 原生编译本地不可用，由 fork CI `:app:assembleMobileArm64_v8aRelease` 验证通过。
+
+### 交付记录（1.0.61）
+
+- 代码提交：`330e225e`（原生壳调色板对齐站点，5 文件 `+21/-21`）、`2c216117`（下载页硬编码配色，1 文件 `+6/-6`）、`705655c2`（版本号升到 1.0.61 / code 62，3 文件 `+5/-5`）
+- 恢复标签：`recovery/1.0.61-dark-palette/20260921063928-330e225e509a`、`recovery/1.0.61-download-palette/20260921064011-2c216117715f`、`recovery/1.0.61-version/20260921064137-705655c2084b`
+- CI：run `35542526644`（head_sha `705655c2`）**success**（attempt 1）
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `62`，versionName `1.0.61`
+- APK SHA256：`8a4ccda67aec36a1222d6a8824049df19ba7f4c323217950603b7ec46bf56c21`（141384715 字节）
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.61.apk`（HTTP 206，远端 141384715 字节）
+- 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
+- 待办：真机确认 黑夜 影视主页 / 设置 / 直播 / 下载管理 的底色为蓝黑 `#0d1420` 而非纯黑、卡片为 `#141f31`、边框呈蓝灰；白天观感与 1.0.60 一致（仅 chip / 标签色微调）
