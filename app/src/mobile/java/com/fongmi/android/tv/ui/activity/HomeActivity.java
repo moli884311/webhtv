@@ -48,6 +48,7 @@ import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.fongmi.android.tv.utils.Util;
+import com.moliys.tvbox.MoliysTheme;
 import com.fongmi.android.tv.web.WebHomeChromeStartup;
 import com.fongmi.android.tv.web.WebHomeViewport;
 import com.github.catvod.net.OkHttp;
@@ -113,7 +114,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     /** 站点要求进入原生页时保持隐藏底部标签（含纯深色背景，避免透出壁纸）。 */
     private void applyKeepNavHidden() {
         if (!keepNavHidden) return;
-        mBinding.getRoot().setBackgroundColor(0xFF0F1115);
+        mBinding.getRoot().setBackgroundColor(MoliysTheme.shellBackground());
         setNavigationVisible(false);
         if (mChrome != null) mChrome.refreshLayout();
     }
@@ -150,7 +151,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             if (intent.getBooleanExtra(EXTRA_HIDE_NAV, false)) {
                 intent.removeExtra(EXTRA_HIDE_NAV);
                 keepNavHidden = true;
-                mBinding.getRoot().setBackgroundColor(0xFF0F1115);
+                mBinding.getRoot().setBackgroundColor(MoliysTheme.shellBackground());
                 setNavigationVisible(false);
             }
         } else if (Intent.ACTION_SEND.equals(intent.getAction())) {

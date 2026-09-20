@@ -89,6 +89,8 @@ public class Setting {
     public static final int WALL_CYAN_CRYSTAL = 35;
     public static final int WALL_LAVENDER_CRYSTAL = 36;
     public static final int WALL_GREEN = 1;
+    /** 跟随站点白天/黑夜开关，不使用图片壁纸。 */
+    public static final int WALL_FOLLOW_THEME = 0;
 
     private static final int[] DEFAULT_WALLS = {
             WALL_DREAM_PURPLE, WALL_LAVENDER_CRYSTAL, WALL_PASTEL_PRISM, WALL_ROSE_VEIL, WALL_VIOLET_SMOKE,
@@ -156,8 +158,12 @@ public class Setting {
     }
 
     public static int getWall() {
-        int wall = Prefers.getInt("wall", WALL_DREAM_PURPLE);
-        return wall == WALL_GREEN || isLegacyColorWall(wall) ? WALL_DREAM_PURPLE : wall;
+        int wall = Prefers.getInt("wall", WALL_FOLLOW_THEME);
+        return wall == WALL_GREEN || isLegacyColorWall(wall) ? WALL_FOLLOW_THEME : wall;
+    }
+
+    public static boolean isFollowThemeWall(int wall) {
+        return wall == WALL_FOLLOW_THEME;
     }
 
     public static void putWall(int wall) {
@@ -239,6 +245,7 @@ public class Setting {
     }
 
     public static String getBuiltInWallName(int wall) {
+        if (wall == WALL_FOLLOW_THEME) return "跟随主题";
         if (wall == WALL_AURORA_GLASS) return "蓝紫流光";
         if (wall == WALL_SUNSET_PRISM) return "珊瑚暮色";
         if (wall == WALL_MINT_GLACIER) return "薄荷星云";
@@ -270,6 +277,7 @@ public class Setting {
     }
 
     public static String getWallDesc(String desc) {
+        if (isFollowThemeWall(getWall()) && getWallType() == 0) return "跟随主题";
         return getWallType() == 0 && isBuiltInWall(getWall()) ? getBuiltInWallName(getWall()) : desc;
     }
 

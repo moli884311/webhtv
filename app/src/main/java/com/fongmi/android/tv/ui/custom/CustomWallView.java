@@ -30,6 +30,7 @@ import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.utils.FileUtil;
 import com.github.catvod.crawler.SpiderDebug;
+import com.moliys.tvbox.MoliysTheme;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -127,7 +128,8 @@ public class CustomWallView extends FrameLayout implements DefaultLifecycleObser
     private void load() {
         int wall = Setting.getWall();
         int type = Setting.getWallType();
-        if (isBuiltInColor(wall, type)) loadColor(Setting.getBuiltInWallColor(wall));
+        if (Setting.isFollowThemeWall(wall)) loadColor(MoliysTheme.shellBackground());
+        else if (isBuiltInColor(wall, type)) loadColor(Setting.getBuiltInWallColor(wall));
         else if (isBuiltInDesign(wall, type)) loadDesign(wall);
         else if (isGreen(wall, type)) loadRes(R.drawable.wallpaper_1);
         else if (motionEnabled && type == TYPE_VIDEO) loadVideo(FileUtil.getWall(wall));
@@ -172,7 +174,8 @@ public class CustomWallView extends FrameLayout implements DefaultLifecycleObser
         int wall = Setting.getWall();
         int type = Setting.getWallType();
         Drawable cache = cache();
-        if (isBuiltInColor(wall, type)) binding.image.setImageDrawable(new ColorDrawable(Setting.getBuiltInWallColor(wall)));
+        if (Setting.isFollowThemeWall(wall)) binding.image.setImageDrawable(new ColorDrawable(MoliysTheme.shellBackground()));
+        else if (isBuiltInColor(wall, type)) binding.image.setImageDrawable(new ColorDrawable(Setting.getBuiltInWallColor(wall)));
         else if (isBuiltInDesign(wall, type)) loadDesign(wall);
         else if (isGreen(wall, type)) binding.image.setImageResource(R.drawable.wallpaper_1);
         else if (cache != null) binding.image.setImageDrawable(cache);
@@ -291,6 +294,7 @@ public class CustomWallView extends FrameLayout implements DefaultLifecycleObser
     private int getWallColor() {
         int wall = Setting.getWall();
         int type = Setting.getWallType();
+        if (Setting.isFollowThemeWall(wall)) return MoliysTheme.shellBackground();
         if (type == TYPE_RES && Setting.isBuiltInWall(wall)) return Setting.getBuiltInWallColor(wall);
         if (isGreen(wall, type)) return GREEN_WALL_COLOR;
         File file = FileUtil.getWallCache();
@@ -332,7 +336,7 @@ public class CustomWallView extends FrameLayout implements DefaultLifecycleObser
     private boolean isStaticBuiltInWall() {
         int wall = Setting.getWall();
         int type = Setting.getWallType();
-        return isBuiltInColor(wall, type) || isBuiltInDesign(wall, type) || isGreen(wall, type);
+        return isBuiltInColor(wall, type) || isBuiltInDesign(wall, type) || isGreen(wall, type) || Setting.isFollowThemeWall(wall);
     }
 
     @Override

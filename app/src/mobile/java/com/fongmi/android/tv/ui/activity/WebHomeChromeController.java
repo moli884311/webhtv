@@ -1,6 +1,5 @@
 package com.fongmi.android.tv.ui.activity;
 
-import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -22,6 +21,7 @@ import com.fongmi.android.tv.web.WebHomeChrome;
 import com.fongmi.android.tv.web.WebHomeChromeOptions;
 import com.fongmi.android.tv.web.WebHomeViewport;
 import com.google.gson.JsonObject;
+import com.moliys.tvbox.MoliysTheme;
 
 final class WebHomeChromeController {
 
@@ -225,7 +225,6 @@ final class WebHomeChromeController {
     private boolean useDarkIcons(String style) {
         if (WebHomeChromeOptions.STYLE_DARK.equals(style)) return true;
         if (WebHomeChromeOptions.STYLE_LIGHT.equals(style)) return false;
-        int mask = activity.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        return mask != Configuration.UI_MODE_NIGHT_YES;
+        return MoliysTheme.isLight();
     }
 }

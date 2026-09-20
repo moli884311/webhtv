@@ -24,6 +24,7 @@ import com.fongmi.android.tv.ui.custom.CustomWallView;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.color.DynamicColorsOptions;
+import com.moliys.tvbox.MoliysTheme;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -117,7 +118,8 @@ public abstract class BaseActivity extends AppCompatActivity {
     }
 
     private void enableEdgeToEdge() {
-        EdgeToEdge.enable(this, SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT));
+        SystemBarStyle bar = MoliysTheme.isLight() ? SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT) : SystemBarStyle.dark(Color.TRANSPARENT);
+        EdgeToEdge.enable(this, bar, bar);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             getWindow().setStatusBarContrastEnforced(false);
             getWindow().setNavigationBarContrastEnforced(false);
@@ -141,6 +143,7 @@ public abstract class BaseActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        enableEdgeToEdge();
         Updater.create().resume(this);
     }
 
