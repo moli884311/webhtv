@@ -1653,6 +1653,7 @@ html.native-app .nav-tab::before {
   font-size: 1.08rem;
   line-height: 1.15;
 }
+html.native-app .nav-tab[data-tab="home"]::before { content: '🏠'; }
 html.native-app .nav-tab[data-tab="api"]::before { content: '🎬'; }
 html.native-app .nav-tab[data-tab="parse"]::before { content: '🔓'; }
 html.native-app .nav-tab[data-tab="convert"]::before { content: '🔄'; }
@@ -1808,7 +1809,74 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 .fu-prog.indet .fu-prog-fill { width: 34%; animation: fuSlide 1.1s ease-in-out infinite; }
 @keyframes fuSlide {
   0%   { transform: translateX(-105%); }
-  100% { transform: translateX(305%); }
+   100%   { transform: translateX(305%); }
+}
+
+/* ===== 首页导航：App 启动后的主界面（卡片跳转到各功能界面） ===== */
+body.home-mode .header-block,
+body.home-mode .search-box { display: none !important; }
+
+.home-hero {
+  background: linear-gradient(135deg, #4a9eff 0%, #2563eb 100%);
+  border-radius: 16px;
+  padding: 18px 20px 15px;
+  color: #fff;
+  margin-bottom: 13px;
+}
+.home-greeting { font-size: .72rem; opacity: .86; letter-spacing: 1px; margin-bottom: 7px; }
+.home-title { font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.home-title .home-accent { color: #ffe082; }
+.home-version {
+  font-size: .62rem; font-weight: 600; color: #fff;
+  background: rgba(255, 255, 255, .22);
+  border: 1px solid rgba(255, 255, 255, .38);
+  border-radius: 999px; padding: 1px 8px;
+}
+.home-clock { font-size: 2.05rem; font-weight: 200; font-variant-numeric: tabular-nums; margin-top: 9px; line-height: 1.1; }
+.home-date { font-size: .7rem; opacity: .86; margin-top: 3px; }
+
+.home-search-wrap { position: relative; margin: 2px 0 15px; }
+.home-search-wrap input {
+  width: 100%; padding: 12px 16px 12px 40px;
+  border: 2px solid var(--border); border-radius: 14px;
+  background: var(--card); color: var(--text); font-size: .82rem; outline: none;
+}
+.home-search-wrap input:focus { border-color: var(--accent); }
+.home-search-wrap .home-search-icon {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  font-size: .88rem; opacity: .55; pointer-events: none;
+}
+
+.home-cat { margin-bottom: 17px; }
+.home-cat-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; padding: 0 2px; }
+.home-cat-name { font-size: .8rem; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 7px; }
+.home-cat-name .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.home-cat-count { font-size: .64rem; color: var(--text2); }
+.home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 9px; }
+.home-card {
+  display: flex; align-items: center; gap: 9px; text-align: left;
+  padding: 11px 10px; border-radius: 12px; cursor: pointer; font-family: inherit;
+  background: var(--card); border: 1px solid var(--border-soft); color: var(--text);
+  transition: all .22s ease;
+}
+.home-card:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-2px); }
+.home-card:active { transform: scale(.97); }
+.home-card-icon {
+  width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 700; color: #fff;
+}
+.home-card-text { flex: 1; min-width: 0; display: block; }
+.home-card-title { display: block; font-size: .77rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-card-sub { display: block; font-size: .62rem; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-footer { text-align: center; padding: 12px 0 4px; color: var(--text2); font-size: .65rem; line-height: 1.8; }
+
+body.no-license .home-card.lic-only { display: none !important; }
+body.simple-mode .home-card.full-only { display: none !important; }
+
+@media (max-width: 480px) {
+  .home-clock { font-size: 1.7rem; }
+  .home-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
 </head>
@@ -1837,8 +1905,140 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 
     <div class="nav-tabs" id="navTabs"></div>
 
+    <!-- 首页导航：App 启动后的主界面，卡片跳转到各功能界面 -->
+    <div class="tab-panel active" id="home-panel">
+      <div class="home-hero">
+        <div class="home-greeting" id="homeGreeting">欢迎回来 · 海量接口搬运备份</div>
+        <div class="home-title">海量接口 <span class="home-accent">搬运备份</span><span class="home-version" id="homeVersion">v3.0.33</span></div>
+        <div class="home-clock" id="homeClock">00:00</div>
+        <div class="home-date" id="homeDate"></div>
+      </div>
+
+      <div class="home-search-wrap">
+        <span class="home-search-icon">&#x1F50D;</span>
+        <input type="text" id="homeSearch" placeholder="搜索功能入口..." oninput="filterHomeCards()">
+      </div>
+
+      <!-- 影视观看 -->
+      <div class="home-cat">
+        <div class="home-cat-head">
+          <div class="home-cat-name"><span class="dot" style="background:#a18cd1"></span>影视观看</div>
+          <div class="home-cat-count">5 个</div>
+        </div>
+        <div class="home-grid">
+          <button type="button" class="home-card lic-only" data-go="online">
+            <span class="home-card-icon" style="background:#a18cd1">影</span>
+            <span class="home-card-text"><span class="home-card-title">在线影视</span><span class="home-card-sub">内置影视首页</span></span>
+          </button>
+          <button type="button" class="home-card lic-only" data-go="liveapp">
+            <span class="home-card-icon" style="background:#764ba2">直</span>
+            <span class="home-card-text"><span class="home-card-title">在线直播</span><span class="home-card-sub">内置直播播放</span></span>
+          </button>
+          <button type="button" class="home-card" data-go="live">
+            <span class="home-card-icon" style="background:#4facfe">播</span>
+            <span class="home-card-text"><span class="home-card-title">直播聚合</span><span class="home-card-sub">海量直播线路</span></span>
+          </button>
+          <button type="button" class="home-card" data-go="duanju">
+            <span class="home-card-icon" style="background:#f093fb">剧</span>
+            <span class="home-card-text"><span class="home-card-title">短剧</span><span class="home-card-sub">在线短剧</span></span>
+          </button>
+          <button type="button" class="home-card" data-go="fm365">
+            <span class="home-card-icon" style="background:#f5576c">FM</span>
+            <span class="home-card-text"><span class="home-card-title">FM电台</span><span class="home-card-sub">在线广播</span></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 接口资源 -->
+      <div class="home-cat">
+        <div class="home-cat-head">
+          <div class="home-cat-name"><span class="dot" style="background:#667eea"></span>接口资源</div>
+          <div class="home-cat-count">9 个</div>
+        </div>
+        <div class="home-grid">
+          <button type="button" class="home-card" data-go="api">
+            <span class="home-card-icon" style="background:#667eea">点</span>
+            <span class="home-card-text"><span class="home-card-title">点播</span><span class="home-card-sub">API接口列表</span></span>
+          </button>
+          <button type="button" class="home-card" data-go="cai">
+            <span class="home-card-icon" style="background:#43e97b">采</span>
+            <span class="home-card-text"><span class="home-card-title">采集</span><span class="home-card-sub">采集站接口</span></span>
+          </button>
+          <button type="button" class="home-card full-only" data-go="danmu">
+            <span class="home-card-icon" style="background:#f093fb">弹</span>
+            <span class="home-card-text"><span class="home-card-title">弹幕</span><span class="home-card-sub">弹幕接口</span></span>
+          </button>
+          <button type="button" class="home-card full-only" data-go="epg">
+            <span class="home-card-icon" style="background:#fccb90">EPG</span>
+            <span class="home-card-text"><span class="home-card-title">EPG接口</span><span class="home-card-sub">电子节目单</span></span>
+          </button>
+          <button type="button" class="home-card" data-go="yinyuan">
+            <span class="home-card-icon" style="background:#f5576c">音</span>
+            <span class="home-card-text"><span class="home-card-title">音源</span><span class="home-card-sub">落雪音源列表</span></span>
+          </button>
+          <button type="button" class="home-card" data-go="music">
+            <span class="home-card-icon" style="background:#4facfe">乐</span>
+            <span class="home-card-text"><span class="home-card-title">音乐</span><span class="home-card-sub">在线音乐</span></span>
+          </button>
+          <button type="button" class="home-card" data-go="shuyuan">
+            <span class="home-card-icon" style="background:#00c6fb">书</span>
+            <span class="home-card-text"><span class="home-card-title">书源</span><span class="home-card-sub">阅读书源合集</span></span>
+          </button>
+          <button type="button" class="home-card" data-go="comic">
+            <span class="home-card-icon" style="background:#43e97b">漫</span>
+            <span class="home-card-text"><span class="home-card-title">漫画源</span><span class="home-card-sub">Legado漫画源</span></span>
+          </button>
+          <button type="button" class="home-card" data-go="imgbed">
+            <span class="home-card-icon" style="background:#667eea">图</span>
+            <span class="home-card-text"><span class="home-card-title">图床</span><span class="home-card-sub">图床接口</span></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 工具 -->
+      <div class="home-cat">
+        <div class="home-cat-head">
+          <div class="home-cat-name"><span class="dot" style="background:#4facfe"></span>工具</div>
+          <div class="home-cat-count">3 个</div>
+        </div>
+        <div class="home-grid">
+          <button type="button" class="home-card full-only" data-go="parse">
+            <span class="home-card-icon" style="background:#c20c0c">解</span>
+            <span class="home-card-text"><span class="home-card-title">解密工具</span><span class="home-card-sub">接口解密</span></span>
+          </button>
+          <button type="button" class="home-card full-only" data-go="convert">
+            <span class="home-card-icon" style="background:#00c6fb">转</span>
+            <span class="home-card-text"><span class="home-card-title">直播源转换</span><span class="home-card-sub">txt/m3u互转</span></span>
+          </button>
+          <button type="button" class="home-card full-only" data-go="download">
+            <span class="home-card-icon" style="background:#4facfe">下</span>
+            <span class="home-card-text"><span class="home-card-title">下载</span><span class="home-card-sub">下载资源</span></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 其他 -->
+      <div class="home-cat">
+        <div class="home-cat-head">
+          <div class="home-cat-name"><span class="dot" style="background:#999"></span>其他</div>
+          <div class="home-cat-count">1 个</div>
+        </div>
+        <div class="home-grid">
+          <button type="button" class="home-card full-only" data-go="about">
+            <span class="home-card-icon" style="background:#999">i</span>
+            <span class="home-card-text"><span class="home-card-title">关于</span><span class="home-card-sub">声明与联系</span></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="home-footer">
+        海量接口搬运备份 · tvbox.moliys.icu · 备用数据源，防屏不迷路<br>
+        资源整理：【误道者】 · QQ群：367018090 / 1067685939
+      </div>
+    </div>
+
     <!-- 点播面板 -->
-    <div class="tab-panel active" id="api-panel">
+    <div class="tab-panel" id="api-panel">
       <div class="api-list" id="listContainer">
         <div class="loading" id="apiLoading">⏳ 正在加载接口列表...</div>
       </div>
@@ -2112,7 +2312,7 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 const MODE_KEY = 'site_mode';
 const THEME_KEY = 'site_theme';
 /* 站点版本号：每次修复/变更后末位 +1，例如 3.0.0 -> 3.0.1 */
-const SITE_VERSION = '3.0.32';
+const SITE_VERSION = '3.0.33';
 const versionEl = document.getElementById('siteVersion');
 if (versionEl) versionEl.textContent = 'v' + SITE_VERSION;
 const btn = document.getElementById('modeToggleBtn');
@@ -2166,7 +2366,7 @@ const ROTATE_KEYWORDS = ["模糊搜索","模糊搜索"];
 
 /* ===== 状态变量 ===== */
 let currentMode = localStorage.getItem(MODE_KEY) || 'simple';
-let currentTabId = 'api';
+let currentTabId = 'home';
 let topSeed = Date.now();
 let DOWNLOAD_SOURCES = [];
 let rawListText = null;
@@ -3466,6 +3666,7 @@ function parseDownloadResult() {
 
 /* ===== 标签导航 ===== */
 const tabsData = [
+  { id: "home", label: "首页", hideSearch: true },
   { id: "api", label: "点播", hideSearch: false },
   { id: "live", label: "直播", hideSearch: false },
   { id: "cai", label: "采集", hideSearch: false },
@@ -3513,6 +3714,7 @@ function renderTabs() {
 }
 
 function showPanel(tabId) {
+  document.body.classList.toggle('home-mode', tabId === 'home');
   if (searchBox) {
     searchBox.value = '';
     document.querySelectorAll('#api-panel .api-item.hidden').forEach(e => e.classList.remove('hidden'));
@@ -3645,12 +3847,65 @@ btn.addEventListener('click', () => {
     searchBox.style.display = '';
     positionSearchBox();
     renderApi();
+    document.body.classList.toggle('home-mode', currentTabId === 'home');
   }
+});
+
+/* ===== 首页导航：卡片跳转到各功能界面 ===== */
+const homeVersionEl = document.getElementById('homeVersion');
+if (homeVersionEl) homeVersionEl.textContent = 'v' + SITE_VERSION;
+
+function updateHomeClock() {
+  const clockEl = document.getElementById('homeClock');
+  if (!clockEl) return;
+  const now = new Date();
+  clockEl.textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const dateEl = document.getElementById('homeDate');
+  if (dateEl) dateEl.textContent = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + days[now.getDay()];
+  const greetEl = document.getElementById('homeGreeting');
+  if (greetEl) {
+    const h = now.getHours();
+    let greet = '晚上好';
+    if (h < 6) greet = '夜深了';
+    else if (h < 12) greet = '早上好';
+    else if (h < 18) greet = '下午好';
+    greetEl.textContent = greet + ' · 海量接口搬运备份';
+  }
+}
+
+function filterHomeCards() {
+  const input = document.getElementById('homeSearch');
+  const val = input ? input.value.trim().toLowerCase() : '';
+  document.querySelectorAll('#home-panel .home-card').forEach(card => {
+    const hit = val === '' || card.textContent.toLowerCase().indexOf(val) !== -1;
+    card.style.display = hit ? '' : 'none';
+  });
+  document.querySelectorAll('#home-panel .home-cat').forEach(cat => {
+    const any = Array.from(cat.querySelectorAll('.home-card')).some(c => c.style.display !== 'none');
+    cat.style.display = any ? '' : 'none';
+  });
+}
+
+function goTab(id) {
+  if (!id) return;
+  currentTabId = id;
+  try { renderTabs(); } catch (e) {}
+  try { showPanel(id); } catch (e) {}
+}
+
+document.querySelectorAll('#home-panel .home-card').forEach(card => {
+  card.addEventListener('click', function () {
+    goTab(this.getAttribute('data-go'));
+  });
 });
 
 /* ===== 启动 ===== */
 renderTabs();
 renderApi();
+updateHomeClock();
+setInterval(updateHomeClock, 10000);
+try { showPanel(currentTabId); } catch (e) {}
 ensureConfig().then(() => {
   if (currentMode !== 'simple') renderDownloads();
 });
