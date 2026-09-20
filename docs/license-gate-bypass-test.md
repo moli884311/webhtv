@@ -10,7 +10,7 @@
 
 ## 方案（混合：在线校验 + 签名 + 设备绑定 + 短时缓存）
 
-1. App 首启生成并持久化 10 位设备码（去除易混字符），展示于授权面板。
+1. App 由系统设备标识（ANDROID_ID）稳定派生 10 位设备码（去除易混字符），清除数据/卸载重装后不变，展示于授权面板。
 2. 用户把设备码发到群，管理员回复 `授权 <设备码> <天数|YYYY-MM-DD|永久> [包名]`。
 3. 机器人把记录写入 `/www/wwwroot/tvbox_licenses.json`（站点目录外，web 不可访问）。
 4. App 联网请求 `https://tvbox.moliys.icu/auth_check.php`，响应含 `{auth,exp,srv,sign}`。
@@ -22,8 +22,8 @@
 
 ## 变更文件
 
-- App：`app/src/main/java/com/moliys/tvbox/LicenseManager.java`（新增）、`MainActivity.java`、`Version.java`（41 / 1.0.40）
-- 构建：`.github/workflows/build.yml`（tag `moliys-1.0.40`）
+- App：`app/src/main/java/com/moliys/tvbox/LicenseManager.java`（新增）、`MainActivity.java`、`Version.java`（42 / 1.0.41）
+- 构建：`.github/workflows/build.yml`（tag `moliys-1.0.41`）
 - 服务器：`server/auth_check.php`、`server/nginx-location.conf`、`server/README.md`
 - 机器人（站点外，`/opt/qqbot`）：`framework/license.py` 新增，`framework/__init__.py`、`bot.py`、`framework/events.py` 挂载
 

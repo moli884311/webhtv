@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.util.Base64;
 import android.util.Log;
 
@@ -17,6 +18,7 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.security.KeyFactory;
+import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Signature;
@@ -26,7 +28,7 @@ import java.security.spec.X509EncodedKeySpec;
  * 「影视」功能授权校验。
  *
  * 混合方案：
- *  - 设备首次启动生成并持久化一个设备码，用户在 App 内查看后发到群，管理员用机器人指令授权。
+ *  - 设备码由系统设备标识（ANDROID_ID）稳定派生，清除数据/卸载重装后不变；用户在 App 内查看后发到群，管理员用机器人指令授权。
  *  - App 联网向 /auth_check.php 查询该设备码的授权状态；响应带 RSA-SHA256 签名，App 内嵌公钥验签。
  *  - 验签通过的 {auth, exp, srv} 缓存到本地；以「服务器时间 + 单调时钟增量」估算当前时间，
  *    防止用户改系统时间续命，也允许短暂断网继续使用直到 exp。
@@ -40,6 +42,8 @@ public final class LicenseManager {
 
     private static final String CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final int CODE_LEN = 10;
+    private static final String CODE_SALT = "moliys-tvbox-device-v1";
+    private static volatile String cachedCode;
 
     private static final String PUBLIC_KEY_PEM =
             "-----BEGIN PUBLIC KEY-----\n"
@@ -65,21 +69,58 @@ public final class LicenseManager {
         return ctx.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    /** 设备码：首次生成的 10 位大写码（去除易混字符），持久化不变。 */
+    /**
+     * 设备码：由系统设备标识（ANDROID_ID）稳定派生，同一设备在同一签名下
+     * 清除数据、卸载重装后均保持不变；仅在无法取得标识时退回持久化随机码。
+     */
     public static String deviceCode(Context ctx) {
-        SharedPreferences p = prefs(ctx);
-        String code = p.getString("dcode", null);
-        if (code != null && code.length() > 0) {
+        String code = cachedCode;
+        if (code != null) {
             return code;
         }
-        SecureRandom rnd = new SecureRandom();
+        synchronized (LicenseManager.class) {
+            if (cachedCode != null) {
+                return cachedCode;
+            }
+            SharedPreferences p = prefs(ctx);
+            String derived = null;
+            try {
+                String androidId = Settings.Secure.getString(
+                        ctx.getContentResolver(), Settings.Secure.ANDROID_ID);
+                if (androidId != null && androidId.length() > 0
+                        && !"9774d56d682e549c".equalsIgnoreCase(androidId)
+                        && !"0000000000000000".equals(androidId)) {
+                    derived = derive(androidId);
+                }
+            } catch (Throwable e) {
+                Log.w(TAG, "androidId unavailable: " + e.getMessage());
+            }
+            if (derived == null || derived.length() != CODE_LEN) {
+                derived = p.getString("dcode", null);
+                if (derived == null || derived.length() != CODE_LEN) {
+                    SecureRandom rnd = new SecureRandom();
+                    StringBuilder sb = new StringBuilder(CODE_LEN);
+                    for (int i = 0; i < CODE_LEN; i++) {
+                        sb.append(CODE_ALPHABET.charAt(rnd.nextInt(CODE_ALPHABET.length())));
+                    }
+                    derived = sb.toString();
+                }
+                p.edit().putString("dcode", derived).apply();
+            }
+            cachedCode = derived;
+            return derived;
+        }
+    }
+
+    /** 把设备标识映射为 10 位设备码；32 整除 256，取模无偏。 */
+    private static String derive(String seed) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] h = md.digest((CODE_SALT + ":" + seed).getBytes(Charset.forName("UTF-8")));
         StringBuilder sb = new StringBuilder(CODE_LEN);
         for (int i = 0; i < CODE_LEN; i++) {
-            sb.append(CODE_ALPHABET.charAt(rnd.nextInt(CODE_ALPHABET.length())));
+            sb.append(CODE_ALPHABET.charAt((h[i] & 0xFF) % CODE_ALPHABET.length()));
         }
-        code = sb.toString();
-        p.edit().putString("dcode", code).apply();
-        return code;
+        return sb.toString();
     }
 
     /** 估算当前时间：以最近一次校验得到的服务器时间为锚，叠加单调时钟增量。 */
