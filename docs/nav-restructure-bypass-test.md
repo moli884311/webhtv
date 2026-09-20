@@ -287,9 +287,15 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 
 交付记录（1.0.49）：
 
-- 代码提交：待 CI 完成后回填
-- CI：待回填
-- 产物：package `com.fongmi.android.tvceshi`，versionCode 待回填，versionName 1.0.49
-- APK SHA256：待回填
-- 上传：待回填
+- 代码提交：`703aba083ca8b6dd4d5763090281eafa55182442`（8 文件）
+- CI：run `35520907190`（head_sha `703aba08`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `50`，versionName `1.0.49`，appname `过包名版本测试版`
+- APK SHA256：`832ec6f5e5c436e0805d788257ff68cf833735ce05c921c82f6ef11937cf48d3`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.49.apk`（141384075 字节，HTTP 206/200）
 - 站点校验：3 段内联 JS 全部通过 `node --check`；重打后 pak 内可见 `SITE_VERSION = '3.0.31'`、`open-api-btn` 按钮模板与委托
+
+真机验证要点（1.0.49）：
+
+1. 接口页每行（原始/主/备份线路）都有「打开」，点后进入内置影视且底部标签隐藏。
+2. 未授权时「打开」与「设置」一起隐藏。
+3. 打开后可在「设置 → 接口」切回原接口。
