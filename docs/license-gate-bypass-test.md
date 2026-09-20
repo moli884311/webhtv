@@ -42,8 +42,9 @@
 
 ## 交付产物
 
-- APK：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.40.apk`
-- 大小 141366271，SHA-256 `38e462cd6b03a851f12045a05d058892356bc1cf183a39ec3f0db2f37639cf35`（含弹窗文案『把设备码发到群里，等待管理员回复』）
+- APK：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.41.apk`
+- 大小 141366271，SHA-256 `13718f44ca6082918eca88a02c4b9e78f05ea77fc8dd8613a8a33a45f5906868`（设备码 ANDROID_ID 派生 + 弹窗文案『把设备码发到群里，等待管理员回复』）
+- 旧包 1.0.40 SHA-256 `38e462cd6b03a851f12045a05d058892356bc1cf183a39ec3f0db2f37639cf35`
 - 注意：不修改共享的 `/apk/version-moliys.js`（正式版 OTA 用），避免把正式版用户导向本测试包。
 
 
