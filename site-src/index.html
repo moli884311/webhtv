@@ -2115,7 +2115,7 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 const MODE_KEY = 'site_mode';
 const THEME_KEY = 'site_theme';
 /* 站点版本号：每次修复/变更后末位 +1，例如 3.0.0 -> 3.0.1 */
-const SITE_VERSION = '3.0.36';
+const SITE_VERSION = '3.0.37';
 const versionEl = document.getElementById('siteVersion');
 if (versionEl) versionEl.textContent = 'v' + SITE_VERSION;
 const btn = document.getElementById('modeToggleBtn');
@@ -2999,15 +2999,15 @@ function renderDanmu() {
       rows += `<div class="danmu-item" data-name="${esc((s.name || '').toLowerCase())}" style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:8px">
         <span class="danmu-dot" data-url="${esc(s.url)}" style="flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:#cbd5e1" title="检测中..."></span>
         <span style="flex:0 0 auto;font-size:.78rem;font-weight:600;color:#0b1e33">${esc(s.name)}</span>
-        <span style="flex:1;font-size:.75rem;color:#2563eb;word-break:break-all">${esc(api)}</span>
+        <span style="flex:1;font-size:.75rem;color:#2563eb;word-break:break-all">${esc(s.url)}</span>
         <button class="danmu-apply-btn" type="button" data-name="${esc(s.name)}" data-url="${esc(api)}" title="把该弹幕接口应用到沫离 App">应用</button>
-        <button class="copy-btn" data-url="${esc(api)}">复制</button>
+        <button class="copy-btn" data-url="${esc(s.url)}">复制</button>
       </div>`;
     });
     container.innerHTML = `<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;border:1px solid #eef2f7">
       <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:4px">💬 弹幕接口</h3>
-      <p style="font-size:.76rem;color:#5a6f88;margin-bottom:4px">共 ${DANMU_SOURCES.length} 条，点击「应用」一键写入沫离 App 的弹幕接口，点击「复制」把地址复制给其它壳子。</p>
-      <p style="font-size:.72rem;color:#8b9eb0;margin-bottom:4px">弹幕格式：<code style="font-size:.7rem;color:#2563eb;background:#eef3fa;border-radius:4px;padding:1px 5px">{源地址}${esc(tpl)}</code></p>
+      <p style="font-size:.76rem;color:#5a6f88;margin-bottom:4px">共 ${DANMU_SOURCES.length} 条，列表显示弹幕源地址，「复制」复制源地址给其它壳子，「应用」一键写入沫离 App。</p>
+      <p style="font-size:.72rem;color:#8b9eb0;margin-bottom:4px">应用时自动拼接：<code style="font-size:.7rem;color:#2563eb;background:#eef3fa;border-radius:4px;padding:1px 5px">{源地址}${esc(tpl)}</code></p>
       <p style="font-size:.72rem;color:#8b9eb0;margin-bottom:4px">状态：<span style="color:#22c55e">●</span> 可访问　<span style="color:#ef4444">●</span> 无法访问　<span style="color:#cbd5e1">●</span> 检测中</p>
       ${rows}
     </div>`;
