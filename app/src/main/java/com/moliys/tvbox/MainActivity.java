@@ -44,6 +44,7 @@ import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.impl.Callback;
+import com.fongmi.android.tv.setting.DanmakuSetting;
 
 import java.io.File;
 import java.util.List;
@@ -1084,6 +1085,20 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** 弹幕页「应用」：把该弹幕接口写入播放器设置，并打开弹幕加载与自动搜索。 */
+    private void applyDanmakuConfig(final String name, final String url) {
+        final String api = url == null ? "" : url.trim();
+        if (api.length() == 0 || !DanmakuSetting.isValidApiUrl(api)) {
+            Toast.makeText(MainActivity.this, "弹幕接口无效，请检查地址", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        DanmakuSetting.putApiUrl(api);
+        DanmakuSetting.putLoad(true);
+        DanmakuSetting.putAuto(true);
+        final String label = (name == null || name.trim().length() == 0) ? "弹幕接口" : name.trim();
+        Toast.makeText(MainActivity.this, "已应用：" + label, Toast.LENGTH_SHORT).show();
+    }
+
     private void startFongmi(final String cls, final String url) {
         runOnUiThread(new Runnable() {
             @Override
@@ -1316,6 +1331,22 @@ public class MainActivity extends Activity {
                         return;
                     }
                     MainActivity.this.openLiveSource(name, url);
+                }
+            });
+        }
+
+        /** 弹幕页「应用」：与 影视主页/接口打开 同一套授权门禁，通过后把弹幕接口写入播放器设置。 */
+        @JavascriptInterface
+        public void applyDanmaku(final String name, final String url) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "该功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.applyDanmakuConfig(name, url);
                 }
             });
         }

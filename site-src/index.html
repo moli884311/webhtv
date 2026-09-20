@@ -731,10 +731,11 @@ body:not(.simple-mode) .search-box { margin-bottom: 14px; }
 .copy-btn:active { filter: brightness(.88); transform: scale(.96); }
 .copy-btn.copied { background: #3b9b6c; box-shadow: none; }
 
-/* ===== 线路行操作按钮：解密（复制明文）/ 查看站源（简洁版、全能版都显示）/ 打开（App 内加载） ===== */
+/* ===== 线路行操作按钮：解密（复制明文）/ 查看站源（简洁版、全能版都显示）/ 打开（App 内加载）/ 弹幕应用 ===== */
 .decrypt-btn,
 .viewsrc-btn,
-.open-api-btn {
+.open-api-btn,
+.danmu-apply-btn {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -757,10 +758,12 @@ body:not(.simple-mode) .search-box { margin-bottom: 14px; }
 
 .decrypt-btn:active,
 .viewsrc-btn:active,
-.open-api-btn:active { filter: brightness(.9); transform: scale(.96); }
+.open-api-btn:active,
+.danmu-apply-btn:active { filter: brightness(.9); transform: scale(.96); }
 
-/* 未授权时隐藏「打开」入口（与影视主页/设置 同一套授权状态） */
-body.no-license .open-api-btn { display: none !important; }
+/* 未授权时隐藏「打开」/「应用」入口（与影视主页/设置 同一套授权状态） */
+body.no-license .open-api-btn,
+body.no-license .danmu-apply-btn { display: none !important; }
 .decrypt-btn.dec-busy,
 .viewsrc-btn.dec-busy { opacity: .55; pointer-events: none; }
 .decrypt-btn.dec-done,
@@ -2112,7 +2115,7 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 const MODE_KEY = 'site_mode';
 const THEME_KEY = 'site_theme';
 /* 站点版本号：每次修复/变更后末位 +1，例如 3.0.0 -> 3.0.1 */
-const SITE_VERSION = '3.0.35';
+const SITE_VERSION = '3.0.36';
 const versionEl = document.getElementById('siteVersion');
 if (versionEl) versionEl.textContent = 'v' + SITE_VERSION;
 const btn = document.getElementById('modeToggleBtn');
@@ -2959,27 +2962,58 @@ function openDownloadDir() {
 let DANMU_SOURCES = [];
 const PROBE_API = 'https://tvbox.moliys.icu/share/probe.php';
 
+function danmuApiTemplate() {
+  const cfg = (SITE_CFG && SITE_CFG.danmu) || {};
+  return typeof cfg.api === 'string' ? cfg.api.trim() : '';
+}
+
+function danmuApiUrl(source, tpl) {
+  const join = (base, path) => base + (path.startsWith('/') ? path : '/' + path);
+  const own = typeof source.api === 'string' ? source.api.trim() : '';
+  if (own) return /^https?:\/\//i.test(own) ? own : join(source.url, own);
+  if (!tpl) return source.url;
+  return /^https?:\/\//i.test(tpl) ? tpl : join(source.url, tpl);
+}
+
+function applyDanmu(name, api) {
+  if (window.__TVBOX_NATIVE__ && window.TVBoxNative && typeof window.TVBoxNative.applyDanmaku === 'function') {
+    try {
+      window.TVBoxNative.applyDanmaku(name || '', api || '');
+      return;
+    } catch (e) {}
+  }
+  alert('请在沫离 App 内使用该功能');
+}
+
 function renderDanmu() {
   const container = document.getElementById('danmu-content');
   if (!container) return;
   container.innerHTML = '<div class="loading">⏳ 正在加载弹幕接口...</div>';
-  loadData('danmu').then(list => {
+  Promise.all([ensureConfig(), loadData('danmu')]).then(res => {
+    const list = res[1];
     DANMU_SOURCES = list;
+    const tpl = danmuApiTemplate();
     let rows = '';
     DANMU_SOURCES.forEach(s => {
+      const api = danmuApiUrl(s, tpl);
       rows += `<div class="danmu-item" data-name="${esc((s.name || '').toLowerCase())}" style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border-radius:50px;border:1px solid #e0e6ed;margin-top:8px">
         <span class="danmu-dot" data-url="${esc(s.url)}" style="flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:#cbd5e1" title="检测中..."></span>
         <span style="flex:0 0 auto;font-size:.78rem;font-weight:600;color:#0b1e33">${esc(s.name)}</span>
-        <span style="flex:1;font-size:.75rem;color:#2563eb;word-break:break-all">${esc(s.url)}</span>
-        <button class="copy-btn" data-url="${esc(s.url)}">复制</button>
+        <span style="flex:1;font-size:.75rem;color:#2563eb;word-break:break-all">${esc(api)}</span>
+        <button class="danmu-apply-btn" type="button" data-name="${esc(s.name)}" data-url="${esc(api)}" title="把该弹幕接口应用到沫离 App">应用</button>
+        <button class="copy-btn" data-url="${esc(api)}">复制</button>
       </div>`;
     });
     container.innerHTML = `<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;border:1px solid #eef2f7">
       <h3 style="font-size:.92rem;font-weight:600;color:#0b1e33;margin-bottom:4px">💬 弹幕接口</h3>
-      <p style="font-size:.76rem;color:#5a6f88;margin-bottom:4px">共 ${DANMU_SOURCES.length} 条，点击「复制」把地址填入播放器的弹幕接口。</p>
+      <p style="font-size:.76rem;color:#5a6f88;margin-bottom:4px">共 ${DANMU_SOURCES.length} 条，点击「应用」一键写入沫离 App 的弹幕接口，点击「复制」把地址复制给其它壳子。</p>
+      <p style="font-size:.72rem;color:#8b9eb0;margin-bottom:4px">弹幕格式：<code style="font-size:.7rem;color:#2563eb;background:#eef3fa;border-radius:4px;padding:1px 5px">{源地址}${esc(tpl)}</code></p>
       <p style="font-size:.72rem;color:#8b9eb0;margin-bottom:4px">状态：<span style="color:#22c55e">●</span> 可访问　<span style="color:#ef4444">●</span> 无法访问　<span style="color:#cbd5e1">●</span> 检测中</p>
       ${rows}
     </div>`;
+    container.querySelectorAll('.danmu-apply-btn').forEach(btn => {
+      btn.addEventListener('click', () => applyDanmu(btn.dataset.name, btn.dataset.url));
+    });
     probeDanmu();
   });
 }
