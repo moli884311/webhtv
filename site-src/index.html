@@ -2112,7 +2112,7 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 const MODE_KEY = 'site_mode';
 const THEME_KEY = 'site_theme';
 /* 站点版本号：每次修复/变更后末位 +1，例如 3.0.0 -> 3.0.1 */
-const SITE_VERSION = '3.0.31';
+const SITE_VERSION = '3.0.32';
 const versionEl = document.getElementById('siteVersion');
 if (versionEl) versionEl.textContent = 'v' + SITE_VERSION;
 const btn = document.getElementById('modeToggleBtn');
@@ -2224,7 +2224,7 @@ document.addEventListener('click', function (e) {
   alert('请在沫离 App 内使用该功能');
 });
 
-/* ===== 接口页：打开（原生按配置方式加载该接口并进入影视，未授权由原生拦截） ===== */
+/* ===== 接口页/直播页：打开（原生按配置方式加载并进入影视或直播，未授权由原生拦截） ===== */
 document.addEventListener('click', function (e) {
   const openBtn = (e.target && e.target.closest) ? e.target.closest('.open-api-btn') : null;
   if (!openBtn) return;
@@ -2233,8 +2233,14 @@ document.addEventListener('click', function (e) {
   const url = openBtn.getAttribute('data-url');
   if (!url) return;
   const name = openBtn.getAttribute('data-name') || url;
+  const isLive = openBtn.getAttribute('data-kind') === 'live';
   try {
-    if (window.TVBoxNative && typeof window.TVBoxNative.openInterface === 'function') {
+    if (isLive) {
+      if (window.TVBoxNative && typeof window.TVBoxNative.openLiveSource === 'function') {
+        window.TVBoxNative.openLiveSource(name, url);
+        return;
+      }
+    } else if (window.TVBoxNative && typeof window.TVBoxNative.openInterface === 'function') {
       window.TVBoxNative.openInterface(name, url);
       return;
     }
@@ -2837,7 +2843,8 @@ function renderLiveList() {
         + statusPill(st, u)
         + `<span class="live-url-tag">${tag}</span>`
         + `<span class="live-url-text">${u}</span>`
-        + `<button class="copy-btn" data-url="${u}">复制</button></div></div>`;
+        + `<button class="copy-btn" data-url="${u}">复制</button>`
+        + `<button class="open-api-btn" data-kind="live" data-url="${u}" data-name="${it.displayName}">打开</button></div></div>`;
     };
     let html = '';
     items.forEach(it => {

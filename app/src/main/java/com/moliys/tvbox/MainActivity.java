@@ -39,6 +39,7 @@ import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import com.fongmi.android.tv.BuildConfig;
+import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Site;
@@ -971,6 +972,42 @@ public class MainActivity extends Activity {
         }, "cai-site-open").start();
     }
 
+    /** 直播页「打开」：把该直播源按配置方式加载，成功后直接进入内置直播播放界面。 */
+    private void openLiveSource(final String name, final String url) {
+        if (url == null || url.trim().length() == 0) {
+            return;
+        }
+        final String cfgName = (name == null || name.trim().length() == 0) ? url.trim() : name.trim();
+        final String cfgUrl = url.trim();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Config cfg = Config.find(cfgUrl, cfgName, 1);
+                LiveConfig.load(cfg, new Callback() {
+                    @Override
+                    public void success() {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                openVideoLive();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void error(String msg) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "直播源加载失败，请检查地址", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+
     /** 打开内置影视并定位到「设置」页（HomeActivity 的 nav_position=1），隐藏原生底部标签。 */
     private void openVideoSettings() {
         startFongmiNav("com.fongmi.android.tv.ui.activity.HomeActivity", 1, true);
@@ -1263,6 +1300,22 @@ public class MainActivity extends Activity {
                         return;
                     }
                     MainActivity.this.openInterfaceConfig(name, url);
+                }
+            });
+        }
+
+        /** 直播页「打开」：与 影视主页/采集打开站点 同一套授权门禁，通过后按配置方式加载该直播源并进入直播播放界面。 */
+        @JavascriptInterface
+        public void openLiveSource(final String name, final String url) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "该功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.openLiveSource(name, url);
                 }
             });
         }
