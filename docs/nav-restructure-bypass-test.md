@@ -647,3 +647,44 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.59.apk`（HTTP 206，远端 141384703 字节）
 - 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
 - 待办：真机确认 切白天→影视主页、直播、设置全部变亮且无白字白底；切黑夜全部变暗；首装默认「跟随主题」；已选过壁纸的用户保留原壁纸
+
+## 25. 白天模式可读性修复：影视主页工具栏/分类栏/底部导航 + 直播列表（1.0.60）
+
+反馈（附截图）：切白天后白色文字看不到；影视主页的「搜索按钮」「最近观看」「右上角三个点」不明显。截图 3 显示直播页背景已变亮，但未选中的频道文字（`002 CCTV1`、`004 CCTV3`…）与左侧分组（`卫视频道`、`精彩频道`…）仍是白色。
+
+### 排查结论
+
+- **直播列表走的是 classic 资源**：`LiveSetting.isListStyleClassic()` 默认值就是 `LIST_STYLE_CLASSIC`（`LiveSetting.java:51` `Prefers.getInt("live_list_style", LIST_STYLE_CLASSIC)` 且 `LIST_STYLE_CLASSIC = 1`）。`GroupAdapter.java:114`、`ChannelAdapter.java:238/239`、`EpgDataAdapter.java:79/80` 按该开关在 `selector_live_text_classic` / `selector_live_text` 间二选一，`ChannelAdapter.java:237` 与 `GroupAdapter.java:113` 同理在 `shape_live_classic` / `shape_live` 间二选一。1.0.59 只改了**非 classic** 分支，因此直播列表文字与行底色仍是写死的白色。
+- **影视主页工具栏**：`fragment_vod.xml:21` 用 `app:menu="@menu/menu_vod"`，`menu_vod.xml` 四个条目全部写死 `app:iconTint="@color/white"`（`search`、`history`、`web_home_fullscreen`、`more_actions`），正好对应反馈的搜索 / 最近观看 / 右上角三个点。
+- **影视主页分类栏**：`fragment_vod.xml:65` 的 `tools:listitem="@layout/adapter_type"`，`adapter_type.xml:11` 用 `@color/selector_text`，其默认项是 `@color/white`；`adapter_collect.xml:13` 同源。分类 chip 底色 `shape_item_round` → `selector_item`（`black` 15%），白天为浅灰，白字不可见。
+- **底部导航**：`activity_home.xml:18` 导航条背景 `@color/transparent`（即主题背景），`selector_nav` 未选中项 `@color/white`，白天不可见。
+- **直播当前频道面板**：`activity_live.xml` 的 `liveSource` 图标 `ic_live_source` 全白填充，白天浅色面板上几乎不可见（截图放大确认）。
+
+### 方案
+
+1. `menu_vod.xml`：4 处 `app:iconTint="@color/white"` → `?attr/colorOnSurface`。
+2. `selector_nav.xml`：`state_checked="false"` 由 `@color/white` → `?attr/colorOnSurfaceVariant`（选中仍为 `?attr/colorPrimary`）。
+3. `selector_text.xml`：默认项由 `@color/white` → `?attr/colorOnSurface`（选中/勾选仍为 `?attr/colorOnSecondaryContainer`）。
+4. `selector_live_text_classic.xml`：默认项由 `@color/white` → `?attr/colorOnSurface`。
+5. `selector_live_classic.xml`：默认项保留 `alpha="0.14"`，颜色由 `@color/white` → `?attr/colorOnSurface`（黑夜观感几乎不变，白天成为淡灰行底色）；选中项仍为 `alpha=0.85 ?attr/colorSecondaryContainer`。
+6. `activity_live.xml`：`liveSource` 增加 `app:tint="?attr/colorOnSurfaceVariant"`。该图标只在 embedded 模式显示 —— `setLiveMenuOverlay(true)` 分支会把 `liveCurrent` 置为 `View.GONE`，所以静态 tint 不会影响菜单浮层（深色渐变）下的观感。
+
+### 保留白字的部分（承载于深色播放器面板，故意不动）
+
+`selector_video_text.xml`（`dialog_video_content.xml` → `shape_player_child_sheet_panel`）、`yellow.xml`（`style Control` 播放器控制按钮）、`selector_control_sheet_text.xml`、`selector_live_action_icon.xml`（`adapter_live.xml`），以及 `ic_control_*` / `ic_widget_*` / `ic_popup_*` / `ic_action_*` 等叠加在视频与弹层上的图标。
+
+### 校验
+
+- 6 个改动文件 XML 格式校验通过。
+- 逐项核对 mobile 全部 8 个白色默认选择器的承载面：本次修改的 4 个位于白天浅色承载面；保留的 4 个位于深色播放器面板。
+- 原生编译本地不可用，由 fork CI `:app:assembleMobileArm64_v8aRelease` 验证通过。
+
+### 交付记录（1.0.60）
+
+- 代码提交：`9aaac80f`（白天可读性，6 文件 `+10/-9`）、`c14eacc1`（版本号升到 1.0.60 / code 61，3 文件 `+5/-5`）
+- CI：run `35540971547`（head_sha `c14eacc1`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `61`，versionName `1.0.60`
+- APK SHA256：`02d7dad94e2b5071bd47910868584a978d8be6daa50fb1c799f6d68664e69ec6`（141384715 字节）
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.60.apk`（HTTP 206，远端 141384715 字节）
+- 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
+- 待办：真机确认 白天 影视主页工具栏图标 / 分类栏 / 底部导航 / 直播频道与分组文字 / 直播面板来源图标 全部清晰可见；黑夜观感与 1.0.59 一致
