@@ -251,9 +251,15 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 
 交付记录（1.0.48）：
 
-- 代码提交：待 CI 完成后回填
-- CI：待回填
-- 产物：package `com.fongmi.android.tvceshi`，versionCode 待回填，versionName 1.0.48
-- APK SHA256：待回填
-- 上传：待回填
+- 代码提交：`e2aa198f344bee7a19cb6083ca4e2524409120dc`（11 文件）
+- CI：run `35517227303`（head_sha `e2aa198f`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `49`，versionName `1.0.48`，appname `过包名版本测试版`
+- APK SHA256：`077b91f4ea5c6b30be407fe180e90eefa210838b5c655d4e67b5a197fa1ce994`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.48.apk`（141383823 字节，HTTP 206/200）
 - 站点校验：3 段内联 JS 全部通过 `node --check`；重打后 pak 内可见 `SITE_VERSION = '3.0.30'`、`data-api` 按钮模板、`openCaiSite` 调用
+
+真机验证要点：
+
+1. 采集页点任一「打开站点」→ 授权通过后应加载该采集接口的配置并进入内置影视（不再出现网页）。
+2. 影视页应能浏览该采集接口的列表/详情，点集数能起播（苹果CMS 直连 m3u8）。
+3. 点击后可返回「设置 → 接口」切回原接口（采集接口会作为一条配置保留）。
