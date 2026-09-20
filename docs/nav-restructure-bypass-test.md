@@ -129,7 +129,21 @@
 - APK SHA256：`b9c38591365d46cb9c688f00f51589f0be0477a7a5654aba1fc167f22ecc3297`
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.44.apk`（141367247 字节，HTTP 200）
 
-## 9. 回滚
+## 9. 第四轮修复（1.0.45）
+
+现象：1.0.44 真机进入影视主页，底部三个按钮仍存在（背景已变为纯深色）。
+
+原因：隐藏动作只挂在 `checkAction()`（由 `VodConfig.load` 回调触发）；若该回调未触发或晚于其它逻辑，隐藏就不会生效。
+
+修复（`HomeActivity.java` mobile）：
+
+- `keepNavHidden` 在 `initView()` 阶段即由 `getIntent().getBooleanExtra("hide_nav", false)` 判定（不再只依赖 `checkAction`）。
+- 抽出 `applyKeepNavHidden()`：置纯深色背景 + 隐藏底部标签；在 `initFragment()` 之后、`checkAction()` 内、以及 `onResume()` 中都会执行，确保任何时机都保持隐藏。
+- `setNavigationVisible(visible)` 在 `keepNavHidden` 时忽略一切「显示」请求。
+
+版本：CODE 46 / NAME 1.0.45；`app/build.gradle` versionCode 46 / versionName 1.0.45；workflow tag `moliys-1.0.45`。
+
+## 10. 回滚
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
 - 原生：`git revert` 对应提交，或恢复 `MainActivity.java` 中 `injectVideoEntry` 的悬浮按钮分支与 Bridge 方法。

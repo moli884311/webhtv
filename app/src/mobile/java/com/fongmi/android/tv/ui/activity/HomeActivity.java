@@ -96,7 +96,8 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     protected void initView(Bundle savedInstanceState) {
         wideWindow = MobileWindow.isWide(this);
         returnVodFromEnhance = savedInstanceState != null && savedInstanceState.getBoolean(STATE_RETURN_VOD_FROM_ENHANCE);
-        keepNavHidden = savedInstanceState != null && savedInstanceState.getBoolean(STATE_KEEP_NAV_HIDDEN);
+        keepNavHidden = (savedInstanceState != null && savedInstanceState.getBoolean(STATE_KEEP_NAV_HIDDEN))
+                || getIntent().getBooleanExtra(EXTRA_HIDE_NAV, false);
         currentPosition = savedInstanceState == null ? 0 : savedInstanceState.getInt(STATE_CURRENT_POSITION, 0);
         mStartupConfig = Config.vod();
         mChrome = new WebHomeChromeController(this, mBinding, this, savedInstanceState, WebHomeChromeStartup.restore(mStartupConfig));
@@ -104,11 +105,21 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         mBinding.navigation.setOnItemSelectedListener(this);
         PermissionUtil.requestFile(this, allGranted -> PermissionUtil.requestNotify(this));
         initFragment(savedInstanceState);
-        if (keepNavHidden) {
-            mBinding.getRoot().setBackgroundColor(0xFF0F1115);
-            setNavigationVisible(false);
-        }
+        applyKeepNavHidden();
         initConfig();
+    }
+
+    /** 站点要求进入原生页时保持隐藏底部标签（含纯深色背景，避免透出壁纸）。 */
+    private void applyKeepNavHidden() {
+        if (!keepNavHidden) return;
+        mBinding.getRoot().setBackgroundColor(0xFF0F1115);
+        setNavigationVisible(false);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        applyKeepNavHidden();
     }
 
     @Override
