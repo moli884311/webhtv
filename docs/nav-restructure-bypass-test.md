@@ -531,3 +531,31 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - APK SHA256：`fbc261ff9e57bef67ca74c90c872c9b3cae74991dab016be07ae853aaf325d0e`
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.56.apk`（141384639 字节，HTTP 206/200）
 - 待办：真机确认 主题按钮 / Logo / 设置 三者大小一致、同一水平线；浅色主题下设置按钮可见
+
+## 22. 点播/直播线路行：链接移到标签旁，按钮另起一行（1.0.57）
+
+反馈：要求把点播与直播里「按钮」和「链接」的位置换一下 —— **原始线路标签旁边改为显示线路链接，原来放链接的地方改为放按钮**。
+
+原因：点播行是 `[状态点][标签][复制/解密/查看站源/打开]` + 链接独占第二行；直播行是 `[状态点][标签][链接][复制][打开]`，链接被标签和按钮夹在中间只剩很窄一列，长链接换行成 4~6 行。
+
+处理（`site-src/index.html`）：
+
+- 点播 `lineRow()`：`.url-line-top` 内改为 `状态点 + 标签 + 链接`，四个按钮移入新增的 `.url-line-actions` 作为第二行。
+- 直播 `lineRow()`：`.live-url-body` 内改为 `状态点 + 标签 + 链接`，`复制/打开` 移入新增的 `.live-url-actions` 作为第二行。
+- CSS：`.url-line-top .url-text` / `.live-url-body .live-url-text` 改为 `flex:1; min-width:0; margin:0`（占满标签右侧剩余宽度）；`.url-line-top .url-text` 不再独占整行（删除 `display:block; flex:none; margin-top:5px`）；新增 `.url-line-actions`（`margin-top:7px`）与 `.live-url-actions`（沿用 `.live-url-line` 的 6px 间距），按钮保持右对齐（`.copy-btn` 原有 `margin-left:auto`），与改动前按钮的观感一致。
+- 链接改成与标签同行后，直播长链接从原来的 4~6 行降到 1~2 行；点播链接移到标签右侧。
+- 版本：`SITE_VERSION` 3.0.38 → 3.0.39，`config.json` `site.version` 同步；`Version` CODE 58 / NAME 1.0.57；`app/build.gradle` versionCode 58 / versionName 1.0.57；workflow tag `moliys-1.0.57`；site.pak 重打（78 文件 2077580 字节，SHA256 `f0dcd939b46d51380ab304f9372097b1a5332f543a8191235849dffb595139e8`）。
+
+校验：3 段内联 JS `node --check` 通过；jsdom 载入重打后 `site.pak`：
+- 点播 `.url-line` 子节点 = `[.url-line-top(hstatus, url-tag, url-text), .url-line-actions(copy-btn, decrypt-btn, viewsrc-btn, open-api-btn)]`
+- 直播 `.live-url-line` 子节点 = `[.live-url-body(hstatus, live-url-tag, live-url-text), .live-url-actions(copy-btn, open-api-btn)]`
+- 链接文本正常渲染，无 JS 报错。
+
+交付记录（1.0.57）：
+
+- 代码提交：`e6dc1cc69cc6a1bf3f7df50d5b28dbc722bc1a9a`（6 文件，`+36 / -18`）
+- CI：run `35532658586`（head_sha `e6dc1cc6`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `58`，versionName `1.0.57`
+- APK SHA256：`7b00c4938f0c96f615ad55752c03196fe9258a4c37b0ba8b80d68b3ca5da693a`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.57.apk`（141384767 字节，HTTP 206/200）
+- 待办：真机确认 点播/直播每行都是「状态点 + 标签 + 链接」在上、「复制/解密/查看站源/打开」在下，链接不再挤成多行
