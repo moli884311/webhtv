@@ -216,3 +216,44 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
 - 原生：`git revert` 对应提交，或恢复 `MainActivity.java` 中 `injectVideoEntry` 的悬浮按钮分支与 Bridge 方法。
+
+## 13. 采集页「打开站点」改用配置方式加载采集接口（1.0.48）
+
+需求修正：1.0.47 用 WebHome 打开站点仍是网页，用户要求「打开站点」把**采集接口本身**按 TVBox 配置方式加载使用。
+
+关键结论（纠正 1.0.47 之前的误判）：本 App 并不需要自写 spider。`SiteApi` 对 `Site.type` 不是 3(spider)/4(custom) 的站点会直接走苹果CMS直连路径：
+
+- `Result.fromType(type, body)`：`type == 0` 走 XML，其余走 JSON。
+- `ac(type)`：`type == 0` 用 `ac=videolist`（苹果CMS XML 列表），其余用 `ac=detail`（苹果CMS JSON）。
+- 首页取 `site.getApi()` 原文；分类/详情/搜索分别带 `ac/t/pg`、`ac/ids`、`wd/quick/extend` 参数。
+- 实测采集接口（如 `https://www.maoyanzy.com/api.php/provide/vod/`）返回苹果CMS JSON（`code/msg/page/pagecount/list[].vod_id/vod_name/vod_pic/vod_play_from/vod_play_url`），与 `Vod` 的 `@SerializedName` 完全对应。
+
+因此「打开站点」= 生成只含该采集站点的单仓配置并 `VodConfig.load`，站点进入 `VodConfig.getSites()` 后原生 `FolderFragment`/`SearchFragment` 即可正常浏览。
+
+需求：采集列表里的「打开站点」按钮，用该站的采集接口（`s.api`）生成配置并以配置方式加载；授权门禁与「影视主页」一致。
+
+站点侧（`site-src/index.html`）：
+
+- 卡片按钮由 `data-home` 改为 `data-api`/`data-name`，`s.api` 为空时不渲染按钮。
+- 点击委托改调 `TVBoxNative.openCaiSite(name, api)`；非 App 环境仅 `alert` 提示，不再打开网页。
+- `SITE_VERSION` 3.0.29→3.0.30；`config.json` 的 `site.version` 3.0.29→3.0.30。
+
+原生侧：
+
+- 新增 `com/moliys/tvbox/CaiSite.java`：`detectType(api)`（8s 超时拉取一次，`<?xml`/`<rss` 判为 0 即 XML，否则 1 即 JSON）、`buildConfig(name,api,type)`（单站点 JSON：`key=moliys_cai`、`type`、`api`、`searchable/quickSearch=1`）、`write(context,json)`（写入 `files/moliys_cai.json`，返回 `file://` 地址；内核经内置 Server 的 `/file/` 路由读取）。
+- `MainActivity`：新增 `openCaiSite(name, api)`——后台线程探测格式并写配置，主线程 `Config.find(url, name, 0)` + `VodConfig.load(cfg, cb)`，成功后 `openVideoHome()`、失败 Toast。
+- Bridge：`openWebHome` 改为 `openCaiSite(String name, String api)`，未授权 Toast + 弹授权框（同 `openVideo`）。
+- 回滚 1.0.47 的 WebHome 通道：删除 `startFongmiNav` 的 `web_home_url` 重载、`VodFragment` 的 `getWebHomeOverride()`/相关常量与 `UrlUtil` 导入、`HomeActivity.onNewIntent` 的 `web_home_url` 刷新。1.0.46 的 `WebHomeChromeController.isNavigationForceHidden()` 隐藏底部标签修复保留。
+
+已知行为：加载后该采集接口会成为当前激活接口（写入配置表，可在「设置 → 接口」切回原接口）。
+
+版本：CODE 49 / NAME 1.0.48；`app/build.gradle` versionCode 49 / versionName 1.0.48；workflow tag `moliys-1.0.48`；site.pak 重打（78 文件，SHA256 `14e51431f9aa56d6a4812d2cd221ba8a7d261472e5488f74bc4705c4c740d667`）。
+
+交付记录（1.0.48）：
+
+- 代码提交：待 CI 完成后回填
+- CI：待回填
+- 产物：package `com.fongmi.android.tvceshi`，versionCode 待回填，versionName 1.0.48
+- APK SHA256：待回填
+- 上传：待回填
+- 站点校验：3 段内联 JS 全部通过 `node --check`；重打后 pak 内可见 `SITE_VERSION = '3.0.30'`、`data-api` 按钮模板、`openCaiSite` 调用

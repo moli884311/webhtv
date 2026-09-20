@@ -918,12 +918,57 @@ public class MainActivity extends Activity {
         startFongmi("com.fongmi.android.tv.ui.activity.LiveActivity", null);
     }
 
-    /** 用内置 WebHome 加载指定站点首页（采集页「打开站点」）。 */
-    private void openWebHome(final String url) {
-        if (url == null || url.trim().length() == 0) {
+    /** 采集页「打开站点」：把采集接口以配置方式加载（苹果CMS XML/JSON），再用内置影视浏览。 */
+    private void openCaiSite(final String name, final String api) {
+        if (api == null || api.trim().length() == 0) {
             return;
         }
-        startFongmiNav("com.fongmi.android.tv.ui.activity.HomeActivity", 0, true, url.trim());
+        final String siteName = (name == null || name.trim().length() == 0) ? api.trim() : name.trim();
+        final String siteApi = api.trim();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final int type = CaiSite.detectType(siteApi);
+                final String json = CaiSite.buildConfig(siteName, siteApi, type);
+                final String url = json.length() == 0 ? "" : CaiSite.write(MainActivity.this, json);
+                if (url.length() == 0) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this, "采集接口配置生成失败", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    return;
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Config cfg = Config.find(url, siteName, 0);
+                        VodConfig.load(cfg, new Callback() {
+                            @Override
+                            public void success() {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        openVideoHome();
+                                    }
+                                });
+                            }
+
+                            @Override
+                            public void error(String msg) {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Toast.makeText(MainActivity.this, "采集接口加载失败，请检查地址", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        }, "cai-site-open").start();
     }
 
     /** 打开内置影视并定位到「设置」页（HomeActivity 的 nav_position=1），隐藏原生底部标签。 */
@@ -932,10 +977,6 @@ public class MainActivity extends Activity {
     }
 
     private void startFongmiNav(final String cls, final int position, final boolean hideNav) {
-        startFongmiNav(cls, position, hideNav, null);
-    }
-
-    private void startFongmiNav(final String cls, final int position, final boolean hideNav, final String webHomeUrl) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -945,9 +986,6 @@ public class MainActivity extends Activity {
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                     intent.putExtra("nav_position", position);
                     intent.putExtra("hide_nav", hideNav);
-                    if (webHomeUrl != null && webHomeUrl.length() > 0) {
-                        intent.putExtra("web_home_url", webHomeUrl);
-                    }
                     startActivity(intent);
                 } catch (Exception e) {
                     Toast.makeText(MainActivity.this, "打开设置失败", Toast.LENGTH_SHORT).show();
@@ -1135,9 +1173,9 @@ public class MainActivity extends Activity {
             });
         }
 
-        /** 采集页「打开站点」：受同样的授权门禁，通过后用内置 WebHome 加载该站点首页。 */
+        /** 采集页「打开站点」：受同样的授权门禁，通过后把采集接口以配置方式加载。 */
         @JavascriptInterface
-        public void openWebHome(final String url) {
+        public void openCaiSite(final String name, final String api) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -1146,7 +1184,7 @@ public class MainActivity extends Activity {
                         showLicenseDialog();
                         return;
                     }
-                    MainActivity.this.openWebHome(url);
+                    MainActivity.this.openCaiSite(name, api);
                 }
             });
         }

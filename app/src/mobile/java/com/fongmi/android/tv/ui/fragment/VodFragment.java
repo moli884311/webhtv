@@ -62,7 +62,6 @@ import com.fongmi.android.tv.ui.dialog.TypeDialog;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
-import com.fongmi.android.tv.utils.UrlUtil;
 import com.fongmi.android.tv.web.HomeWebController;
 import com.fongmi.android.tv.web.WebHomeChrome;
 import com.fongmi.android.tv.web.WebHomeChromeStartup;
@@ -84,8 +83,6 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     private FragmentVodBinding mBinding;
     private SiteViewModel mViewModel;
     private HomeWebController mWeb;
-    private static final String EXTRA_WEB_HOME_URL = "web_home_url";
-    private static final String SITE_KEY_WEB_HOME = "moliys_web_home";
     private TypeAdapter mAdapter;
     private Result mResult;
     private String mChromeMode = WebHomeChrome.NORMAL;
@@ -101,21 +98,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private Site getHome() {
-        Site override = getWebHomeOverride();
-        return override == null ? VodConfig.get().getHome() : override;
-    }
-
-    /** 采集页「打开站点」临时用 WebHome 加载指定首页，不写入用户配置。 */
-    private Site getWebHomeOverride() {
-        if (getActivity() == null || getActivity().getIntent() == null) return null;
-        String url = getActivity().getIntent().getStringExtra(EXTRA_WEB_HOME_URL);
-        if (TextUtils.isEmpty(url)) return null;
-        Site site = new Site();
-        site.setKey(SITE_KEY_WEB_HOME);
-        String host = UrlUtil.host(url);
-        site.setName(TextUtils.isEmpty(host) ? url : host);
-        site.setHomePage(url);
-        return site;
+        return VodConfig.get().getHome();
     }
 
     private Config getConfig() {
