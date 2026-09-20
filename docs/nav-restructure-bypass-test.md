@@ -505,3 +505,29 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - 产物：package `com.fongmi.android.tvceshi`，versionCode `56`，versionName `1.0.55`
 - APK SHA256：`339236666d0b2d8264260ac6936a46b34aad1d72661b0ecbc1c883698ee464da`
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.55.apk`（141384655 字节，HTTP 206/200）
+
+## 21. 头部顶栏整理：主题按钮 / Logo / 设置按钮同行同尺寸（1.0.56）
+
+反馈：「切换白天/黑色」按钮与 Logo（头像）大小不一样、位置不齐，要求整体整理。
+
+原因：三个按钮原本是 `.container` 下的绝对定位元素（`top:14px` / `left:10px` / `right:10px`，36px），而 `h1` 是普通块级、带浏览器默认 `margin: 0.67em 0`（约 14.5px），Logo 用 `vertical-align: -.5rem` 硬调，所以按钮中心在 32px、Logo 中心在 ~54px，`36px` vs `32px` 尺寸也不一致。
+
+处理（`site-src/index.html`，纯 CSS + DOM 层级）：
+
+- 新增 `.header-top`：`position: relative; display: flex; align-items: center; justify-content: center; min-height: 38px`，把 `#themeToggleBtn`、`#modeToggleBtn`、`#settingsBtn` 与 `h1` 收进同一行（三个按钮改为 `.header-top` 内的绝对定位，`top: 50% + translateY(-50%)` 垂直居中，左右各贴边）。
+- 统一尺寸：按钮 `38×38`（圆/胶囊，含移动端 `34px`），`h1 .header-logo` 同步 `38×38`（移动端 `34px`）。
+- `h1` 改为 `display:flex; align-items:center; justify-content:center; gap:8px; margin:0`，Logo 去掉 `vertical-align` / `margin-right` 微调，由 flex 保证与标题、按钮严格对齐；标题仍由 `justify-content:center` 居中（绝对定位的按钮不参与布局，标题居中不受左右按钮宽度差影响）。
+- `.header-block` 内边距 `24px 16px 20px` → `18px 16px 18px`（移动端 `14px 12px 14px`），高度更紧凑。
+- 顺带修掉浅色主题下的遗漏：`body[data-theme="light"]` 颜色规则补上 `#settingsBtn`（原先只有主题/模式按钮，设置按钮在浅色下是白字浅底）。
+- 版本：`SITE_VERSION` 3.0.37 → 3.0.38，`config.json` `site.version` 同步；`Version` CODE 57 / NAME 1.0.56；`app/build.gradle` versionCode 57 / versionName 1.0.56；workflow tag `moliys-1.0.56`；site.pak 重打（78 文件 2077452 字节，SHA256 `35333e971fd07ae14c2c7c954db838a40a2359c1cc23dbfe06ea226c8b4da4ec`）。
+
+校验：3 段内联 JS `node --check` 通过；jsdom 载入重打后 `site.pak`：`.header-top` 子节点顺序为 `[themeToggleBtn, modeToggleBtn, settingsBtn, h1]`，`h1` 计算样式 `display:flex` / `margin:0`，Logo `38×38`，`#themeToggleBtn` `38×38 absolute top:50% translateY(-50%) left:0`，`#modeToggleBtn`/`#settingsBtn` 高 `38` `absolute top:50% right:0`，三个按钮 id 均可用、无 JS 报错。
+
+交付记录（1.0.56）：
+
+- 代码提交：`e1129b8685fa98ef086ad63588be3853c699b52b`（6 文件，`+53 / -38`）
+- CI：run `35531372306`（head_sha `e1129b86`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `57`，versionName `1.0.56`
+- APK SHA256：`fbc261ff9e57bef67ca74c90c872c9b3cae74991dab016be07ae853aaf325d0e`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.56.apk`（141384639 字节，HTTP 206/200）
+- 待办：真机确认 主题按钮 / Logo / 设置 三者大小一致、同一水平线；浅色主题下设置按钮可见
