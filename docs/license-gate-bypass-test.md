@@ -37,8 +37,15 @@
 ## 已记录验证
 
 - `auth_check.php`：未授权 `auth=0`；写入记录后 `auth=1`；签名用内嵌公钥 openssl 验签 `Verified OK`；公钥指纹与服务器一致。
-- 机器人：`py_compile` 通过，重启后 `on_ready` 正常，无 import 错误。
-- App：静态复核通过（方法无重复、括号平衡）；CI 编译待跑。
+- 机器人：`py_compile` 通过，重启后 `on_ready` 正常，无 import 错误；模块 `_parse_expiry` 对 `30`/`YYYY-MM-DD`/`永久`/非法输入均正确，`_save` 写库后 `auth_check.php` 返回 `auth=1` 且验签通过；验证后已清空回 `{"devices":{}}`。
+- App：静态复核通过（方法无重复、括号平衡）；CI `35488895915` success，产物 versionCode 41 / versionName 1.0.40 / `com.fongmi.android.tvceshi`。
+
+## 交付产物
+
+- APK：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.40.apk`
+- 大小 141366271，SHA-256 `7a884a9733177660223b90c338d1298eeb8aced4ed1805de8464ee53522ff34d`
+- 注意：不修改共享的 `/apk/version-moliys.js`（正式版 OTA 用），避免把正式版用户导向本测试包。
+
 
 ## 回滚
 
