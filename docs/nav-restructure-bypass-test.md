@@ -203,6 +203,15 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 
 版本：CODE 48 / NAME 1.0.47；`app/build.gradle` versionCode 48 / versionName 1.0.47；workflow tag `moliys-1.0.47`；site.pak 重打（78 文件，SHA256 `abaddf22e4849ac0cf7a9c9cec6a3814c084872bc9f01cc087d616dd55608a6b`）。
 
+交付记录（1.0.47）：
+
+- 代码提交：`c9023103d6ef71fb384bf5be57f710844264b945`（10 文件）
+- CI：run `35515003250`（head_sha `c9023103`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `48`，versionName `1.0.47`
+- APK SHA256：`4c9984d3dbaeaa1fbe84ae2ae375ecef1ca9c6f75ba2484664eea237dedffce3`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.47.apk`（141383803 字节，HTTP 200）
+- 站点校验：3 段内联 JS 全部通过 `node --check`；重打后 pak 内可见 `SITE_VERSION = '3.0.29'`、`cai-open` 按钮模板、`openWebHome` 调用
+
 ## 12. 回滚
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
