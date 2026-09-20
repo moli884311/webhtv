@@ -66,7 +66,7 @@ jobs:
 
       - name: Build release
         env:
-          WEBHTV_RELEASE_TAG: moliys-1.0.59
+          WEBHTV_RELEASE_TAG: moliys-1.0.60
           WEBHTV_APK_SUFFIX: bypass-test
         run: |
           chmod +x ./gradlew
