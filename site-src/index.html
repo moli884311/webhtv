@@ -631,7 +631,7 @@ body:not(.simple-mode) .search-box { margin-bottom: 14px; }
   transition: background .3s, border-color .3s;
 }
 
-/* 第一行：标签 + 状态胶囊 + 操作按钮；链接单独占第二行 */
+/* 第一行：状态 + 标签 + 链接；操作按钮单独占第二行 */
 .url-line-top {
   display: flex;
   align-items: center;
@@ -641,11 +641,29 @@ body:not(.simple-mode) .search-box { margin-bottom: 14px; }
 
 .url-line-top .url-tag,
 .url-line-top .hstatus,
-.url-line-top .copy-btn,
-.url-line-top .decrypt-btn,
-.url-line-top .viewsrc-btn { flex-shrink: 0; }
+.live-url-body .live-url-tag,
+.live-url-body .hstatus { flex-shrink: 0; }
 
-.url-line-top .hstatus { max-width: 45%; overflow: hidden; }
+.url-line-top .hstatus,
+.live-url-body .hstatus { max-width: 45%; overflow: hidden; }
+
+/* 第一行里的链接：占满标签右侧的剩余宽度 */
+.url-line-top .url-text,
+.live-url-body .live-url-text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+/* 第二行：操作按钮（保持右对齐，与原来的一级行一致） */
+.url-line-actions,
+.live-url-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.url-line-actions { margin-top: 7px; }
 
 .url-line.main-line {
   border-color: color-mix(in srgb, var(--accent) 40%, var(--urlborder));
@@ -673,11 +691,8 @@ body:not(.simple-mode) .search-box { margin-bottom: 14px; }
   min-width: 0;
 }
 
-/* 线路行里的链接独占第二行，整行留给长链接 */
+/* 线路行里的链接与标签同行，操作按钮另起一行 */
 .url-line .url-text {
-  display: block;
-  flex: none;
-  margin-top: 5px;
   font-size: .74rem;
   line-height: 1.35;
 }
@@ -2130,7 +2145,7 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 const MODE_KEY = 'site_mode';
 const THEME_KEY = 'site_theme';
 /* 站点版本号：每次修复/变更后末位 +1，例如 3.0.0 -> 3.0.1 */
-const SITE_VERSION = '3.0.38';
+const SITE_VERSION = '3.0.39';
 const versionEl = document.getElementById('siteVersion');
 if (versionEl) versionEl.textContent = 'v' + SITE_VERSION;
 const btn = document.getElementById('modeToggleBtn');
@@ -2703,11 +2718,13 @@ function renderApi() {
         else if (sc === 'st-warn') tally.soft++;
         return `<div class="url-line${cls ? ' ' + cls : ''}">`
         + `<div class="url-line-top">${statusPill(statOf(u), u)}<span class="url-tag">${tag}</span>`
+        + `<span class="url-text">${u}</span></div>`
+        + `<div class="url-line-actions">`
         + `<button class="copy-btn" data-url="${u}">复制</button>`
         + `<button class="decrypt-btn" data-decrypt="${u}" title="解密并复制明文配置">解密</button>`
         + `<button class="viewsrc-btn" data-decrypt="${u}" data-name="${esc(it.name)}" title="查看解密后的站源列表">查看站源</button>`
         + `<button class="open-api-btn" data-url="${u}" data-name="${esc(it.name)}" title="在 App 内用该接口打开影视">打开</button></div>`
-        + `<span class="url-text">${u}</span></div>`;
+        + `</div>`;
       };
       let lines = '';
       if (it.origUrl) {
@@ -2860,7 +2877,8 @@ function renderLiveList() {
       return `<div class="live-url-line${cls ? ' ' + cls : ''}"><div class="live-url-body">`
         + statusPill(st, u)
         + `<span class="live-url-tag">${tag}</span>`
-        + `<span class="live-url-text">${u}</span>`
+        + `<span class="live-url-text">${u}</span></div>`
+        + `<div class="live-url-actions">`
         + `<button class="copy-btn" data-url="${u}">复制</button>`
         + `<button class="open-api-btn" data-kind="live" data-url="${u}" data-name="${it.displayName}">打开</button></div></div>`;
     };
