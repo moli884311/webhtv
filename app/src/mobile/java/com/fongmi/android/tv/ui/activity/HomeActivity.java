@@ -63,6 +63,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     public static final String EXTRA_HIDE_NAV = "hide_nav";
     private static final String STATE_RETURN_VOD_FROM_ENHANCE = "returnVodFromEnhance";
     private static final String STATE_CURRENT_POSITION = "currentPosition";
+    private static final String STATE_KEEP_NAV_HIDDEN = "keepNavHidden";
 
     private FragmentStateManager mManager;
     private ActivityHomeBinding mBinding;
@@ -72,6 +73,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     private int currentPosition;
     private boolean returnVodFromEnhance;
     private boolean navHidden;
+    private boolean keepNavHidden;
 
     @Override
     protected ViewBinding getBinding() {
@@ -94,6 +96,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     protected void initView(Bundle savedInstanceState) {
         wideWindow = MobileWindow.isWide(this);
         returnVodFromEnhance = savedInstanceState != null && savedInstanceState.getBoolean(STATE_RETURN_VOD_FROM_ENHANCE);
+        keepNavHidden = savedInstanceState != null && savedInstanceState.getBoolean(STATE_KEEP_NAV_HIDDEN);
         currentPosition = savedInstanceState == null ? 0 : savedInstanceState.getInt(STATE_CURRENT_POSITION, 0);
         mStartupConfig = Config.vod();
         mChrome = new WebHomeChromeController(this, mBinding, this, savedInstanceState, WebHomeChromeStartup.restore(mStartupConfig));
@@ -101,12 +104,17 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         mBinding.navigation.setOnItemSelectedListener(this);
         PermissionUtil.requestFile(this, allGranted -> PermissionUtil.requestNotify(this));
         initFragment(savedInstanceState);
+        if (keepNavHidden) {
+            mBinding.getRoot().setBackgroundColor(0xFF0F1115);
+            setNavigationVisible(false);
+        }
         initConfig();
     }
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         outState.putBoolean(STATE_RETURN_VOD_FROM_ENHANCE, returnVodFromEnhance);
+        outState.putBoolean(STATE_KEEP_NAV_HIDDEN, keepNavHidden);
         outState.putInt(STATE_CURRENT_POSITION, currentPosition);
         if (mChrome != null) mChrome.save(outState);
         super.onSaveInstanceState(outState);
@@ -123,6 +131,8 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             intent.removeExtra(EXTRA_NAV_POSITION);
             if (intent.getBooleanExtra(EXTRA_HIDE_NAV, false)) {
                 intent.removeExtra(EXTRA_HIDE_NAV);
+                keepNavHidden = true;
+                mBinding.getRoot().setBackgroundColor(0xFF0F1115);
                 setNavigationVisible(false);
             }
         } else if (Intent.ACTION_SEND.equals(intent.getAction())) {
@@ -221,6 +231,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     }
 
     public void setNavigationVisible(boolean visible) {
+        if (visible && keepNavHidden) visible = false;
         navHidden = !visible;
         RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) mBinding.container.getLayoutParams();
         if (visible) {
