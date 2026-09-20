@@ -559,3 +559,46 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - APK SHA256：`7b00c4938f0c96f615ad55752c03196fe9258a4c37b0ba8b80d68b3ca5da693a`
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.57.apk`（141384767 字节，HTTP 206/200）
 - 待办：真机确认 点播/直播每行都是「状态点 + 标签 + 链接」在上、「复制/解密/查看站源/打开」在下，链接不再挤成多行
+
+## 23. 全 app 统一白天/黑夜主题（1.0.58）
+
+反馈：整个 app 要统一颜色背景 —— 黑夜模式就是黑夜的背景，白天就是白天的背景，包括内置的影视主页、直播背景、设置背景，以及短剧、电台、图床。
+
+### 排查结论
+
+- 原生侧：手机版 `Theme.Base` 已经是 `Theme.Material3.DynamicColors.DayNight.NoActionBar`（`app/src/mobile/res/values/styles.xml`），但 App 从不调用 `AppCompatDelegate.setDefaultNightMode`，只能跟随系统；且桥 `setTheme(boolean light)` 过去只调 `applyBarIcons()` 改状态栏图标明暗，**不动任何背景**。
+- 主站侧：`#themeToggleBtn` 切 `body[data-theme]`，但大量生成内容（弹幕/接口/关于面板、线路行）写死浅色（`#fff` / `#f8fafc` / `#e0e6ed` / `#0b1e33` / `#5a6f88` 等），黑夜模式下仍是亮的；`.embed-wrap` 也写死 `background:#f0f7ff`。
+- 短剧 `duanju.moliys.icu`、图床 `img.moliys.icu` 是自建站，可改；电台 `happy.alang.run`、`fm365.space` 是第三方，只能靠外层容器背景。
+- 原生硬编码暗色仅 57 处（多为遮罩/渐变），其余走 Material3 主题属性，整体转亮色可行。
+
+### 方案（用户确认：站点开关为准，初始跟随系统）
+
+1. **原生**
+   - 新增 `app/src/main/java/com/moliys/tvbox/MoliysTheme.java`：偏好 `moliys_shell/theme`（`light`/`dark`，未存则空）；`isLight()`（未存跟随系统 `uiMode`）、`set(light)`（存值 + `AppCompatDelegate.setDefaultNightMode`）、`apply()`（启动时按存值应用）、`shellBackground()`（亮 `#F1F5FA` / 暗 `#0F1115`）、`toJson()`。
+   - `App.onCreate()` 在 `Setting.applyLanguage()` 后调用 `MoliysTheme.apply()`，影视主页 `HomeActivity`、`LiveActivity`、设置（`HomeActivity` nav_position=1）随之整体切主题。
+   - `MainActivity`：壳背景 / `WebView` 背景改用 `MoliysTheme.shellBackground()`，新增 `applyShellTheme()`（背景 + `applyBarIcons`）并在 `onCreate` 与桥 `setTheme` 中调用；桥新增 `getTheme()` 返回 `{"light":..,"saved":..,"mode":..}`。
+2. **主站 `site-src/index.html`**
+   - 主题优先级：`localStorage.site_theme` > 原生 `TVBoxNative.getTheme().saved` > `prefers-color-scheme` > `dark`（新增 `initialTheme()`）；`applyTheme()` 同时更新 `localStorage`、图标、`data-theme`，经由既有 `syncTheme()` 回写原生（原生存值即来源）。
+   - 颜色统一走变量：`background:#fff`→`var(--card)`、`#f8fafc`→`var(--panel)`、`#e0e6ed`/`#eef2f7`→`var(--border-soft)`、`#0b1e33`→`var(--text-strong)`、`#5a6f88`/`#8b9eb0`/`#8fa3b8`→`var(--text2)`、`#2563eb`→`var(--accent-2)`、`#eef3fa`→`var(--tagbg)`、`#cbd5e1`→`var(--border)`、`.dl-icon`/`.embed-wrap`→`var(--card)`/`var(--panel)`，共 70+ 处。
+   - 内嵌页主题联动：新增 `embedUrl(url,theme)`，对自建站（`duanju.moliys.icu`、`img.moliys.icu`）追加 `?theme=light|dark`；懒加载处与 `applyTheme` 均走它，切主题时只更新**未激活**面板以免打断使用。
+3. **图床 `img.moliys.icu`（`/workspace/img-host/`）**：新增 `--solid/--soft/--soft2/--soft3/--chip/--glow/--ink2..4/--drop-*` 等变量并铺开写死色；追加 `html[data-theme="dark"]` 变量覆盖块；`index.html` 头部加引导脚本（`?theme=` > `localStorage.imghub_theme` > 系统），同步 `meta theme-color`。
+4. **短剧 `duanju.moliys.icu`**：新增 `static/theme.js`（同优先级策略，键 `duanju_theme`），`index.php`/`play.php`/`search.php` 头部在样式表前引入并给 `style.css` 加 `?v=2`；`static/style.css` 追加 `html[data-theme="dark"]` 变量块与 `.tag-*`/`.alert-*` 暗色覆盖，`background:white`→`var(--card)`、`#f8fafc`→`var(--soft)`；各页内联样式里的 `#f8fafc`/`#e2e8f0`/`#f1f5f9`/`#d1fae5`/`#059669`/`#f0f4ff` 改为变量（新增 `--soft`/`--badge-ok-bg`/`--badge-ok-ink`）。
+
+### 校验
+
+- 主站：3 段内联 JS `node --check` 通过；jsdom 载入重打后 `site.pak`，5 种场景 `data-theme` 全部符合预期：无原生+系统白天→`light`、无原生+系统黑夜→`dark`、原生已存 light→`light`、原生已存 dark→`dark`、原生未存+系统白天→`light`；`embedUrl('https://duanju.moliys.icu/','dark')` = `https://duanju.moliys.icu/?theme=dark`，`embedUrl('https://img.moliys.icu/','light')` = `?theme=light`，第三方 `fm365.space` 不变。
+- 图床：jsdom 验证 `?theme=dark` → `data-theme=dark`；系统为暗但 `?theme=light` 时仍为 `light`（参数优先）。
+- 短剧：`php -l` 三个页面均无语法错误；jsdom（`resources:'usable'` 加载外部 `theme.js`）验证 `?theme=dark` → `data-theme=dark`，`localStorage.duanju_theme=dark`，样式表引用为 `static/style.css?v=2`。
+- 原生：本地无 Android 工具链，由 CI 编译验证通过。
+
+### 交付记录（1.0.58）
+
+- 代码提交：`e81c5199b7431fe6ebe64b360b9ce1bdb8c5e9b1`（9 文件，`+232 / -99`，新增 `MoliysTheme.java`）
+- CI：run `35534967118`（head_sha `e81c5199`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `59`，versionName `1.0.58`
+- APK SHA256：`6f486751d786242c7cb28d13041897e616060c1bdf9799c259dd767119b42ad6`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.58.apk`（141385155 字节，HTTP 206/200）
+- site.pak：78 文件 2077964 字节，SHA256 `4040989eb3a6ea37687c0f4a82cfdf80325d52568bea2b0b4b3d6cf153848140`
+- 站点版本：`SITE_VERSION` 3.0.40，`config.json` `site.version` 3.0.40
+- 服务器文件：`/www/wwwroot/img.moliys.icu/{index.html,assets/style.css}`、`/www/wwwroot/duanju.moliys.icu/{static/theme.js,static/style.css,index.php,play.php,search.php}`
+- 待办：真机确认 切白天→站点、影视主页、直播、设置、短剧、图床全部变亮；切黑夜全部变暗；首装跟随系统；电台（第三方 iframe）只有外层容器随主题
