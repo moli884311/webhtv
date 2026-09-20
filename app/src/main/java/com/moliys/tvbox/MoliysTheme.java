@@ -16,8 +16,8 @@ public final class MoliysTheme {
 
     private static final String PREFS = "moliys_shell";
     private static final String KEY = "theme";
-    private static final int SHELL_LIGHT = 0xFFF1F5FA;
-    private static final int SHELL_DARK = 0xFF0F1115;
+    private static final int SHELL_LIGHT = 0xFFEEF2F7;
+    private static final int SHELL_DARK = 0xFF0D1420;
 
     private MoliysTheme() {
     }

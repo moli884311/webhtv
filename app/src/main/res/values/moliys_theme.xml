@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 沫离壳主题色（白天）：与站点白天配色保持一致 -->
+<!-- 沫离壳主题色（白天）：对齐站点 :root 配色 -->
 <resources>
 
     <color name="moliys_surface">#FFFFFF</color>
-    <color name="moliys_surface_variant">#E4EAF2</color>
+    <color name="moliys_surface_variant">#E4EBF3</color>
     <color name="moliys_on_surface">#1A2B3D</color>
-    <color name="moliys_on_surface_variant">#6B7F91</color>
+    <color name="moliys_on_surface_variant">#7A8FA3</color>
     <color name="moliys_outline">#D4DBE5</color>
     <color name="moliys_primary">#2563EB</color>
     <color name="moliys_on_primary">#FFFFFF</color>
-    <color name="moliys_primary_container">#D9E6FF</color>
-    <color name="moliys_on_primary_container">#0A2A5E</color>
-    <color name="moliys_secondary_container">#DCE4F0</color>
-    <color name="moliys_on_secondary_container">#16212E</color>
+    <color name="moliys_primary_container">#D8E8F8</color>
+    <color name="moliys_on_primary_container">#3A5A7A</color>
+    <color name="moliys_secondary_container">#E4EBF3</color>
+    <color name="moliys_on_secondary_container">#0A1A2B</color>
 
 </resources>

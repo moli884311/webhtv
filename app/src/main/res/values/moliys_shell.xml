@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="moliys_bg">#FFF1F5FA</color>
+    <color name="moliys_bg">#FFEEF2F7</color>
     <color name="moliys_icon_bg">#FF1E6FEB</color>
 
     <style name="Theme.MoliysShell" parent="@android:style/Theme.Material.NoActionBar">
