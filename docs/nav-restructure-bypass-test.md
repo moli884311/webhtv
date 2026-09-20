@@ -418,3 +418,25 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 1. 启动即首页：顶部彩虹条 + 居中问候/标题/时钟/日期，无蓝色渐变卡片；底部不再有标签栏。
 2. 点任意卡片进入对应面板，右下角出现「返回首页」，点击回首页。
 3. 首页头部（版本角标 / 问候 / 时钟）任意一处 4 秒内连点 6 次，弹出授权面板显示设备码；点「复制设备码」可复制。
+
+## 18. 界面回退到 1.0.50（1.0.53）
+
+反馈：首页导航改版后的观感不接受，要求回退到 1.0.50 的界面。
+
+处理：把站点与原生相关文件整文件恢复到 1.0.50 的提交 `6723f9fc`：
+
+- `git checkout 6723f9fc -- site-src/index.html site-src/config.json app/src/main/assets/site.pak app/src/main/java/com/moliys/tvbox/MainActivity.java app/src/main/java/com/moliys/tvbox/Version.java app/build.gradle .github/workflows/build.yml`
+- 结果：`home-panel` 与首页卡片整块消失，启动仍是站点原有「大标题 + 搜索框 + 顶部标签栏」，App 内标签栏继续固定在底部；`injectVideoEntry()` 恢复为只认 `data-tab="about"` 连点 6 次；1.0.51/1.0.52 的首页导航、彩虹条、返回首页悬浮按钮、`data-lic-tap` 全部移除。
+- 保留：1.0.48 采集「打开站点」、1.0.49 接口页「打开」、1.0.50 直播页「打开」不受影响（均在更早提交）。
+- 版本号前移，不复用旧号：`SITE_VERSION` 3.0.35；`Version` CODE 54 / NAME 1.0.53；`app/build.gradle` versionCode 54 / versionName 1.0.53；workflow tag `moliys-1.0.53`；site.pak 重打（78 文件，大小与 1.0.50 一致 2076972 字节）。
+
+交付记录（1.0.53）：
+
+- 代码提交：`a8f9ec328510ff2e183c9149a66e4ceef1f9c058`（7 文件，`+13 / -304`）
+- CI：run `35527571593`（head_sha `a8f9ec32`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `54`，versionName `1.0.53`，appname `过包名版本测试版`
+- APK SHA256：`2010d91a1d58e00c6722a671cbac44b0693851fda87dab060f45e03caf670ca7`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.53.apk`（141384159 字节，HTTP 206/200）
+- 1.0.50 安装包保留可下载：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.50.apk`
+
+回退锚点：1.0.51/1.0.52 的实现在 `d089dae4`（首页导航主界面）与 `aaf064bd`（照设计稿 + 隐藏底部标签 + 返回首页 + 主页 6 次设备码），如需重新取回可按这两个提交 cherry-pick。
