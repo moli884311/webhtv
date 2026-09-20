@@ -602,3 +602,48 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - 站点版本：`SITE_VERSION` 3.0.40，`config.json` `site.version` 3.0.40
 - 服务器文件：`/www/wwwroot/img.moliys.icu/{index.html,assets/style.css}`、`/www/wwwroot/duanju.moliys.icu/{static/theme.js,static/style.css,index.php,play.php,search.php}`
 - 待办：真机确认 切白天→站点、影视主页、直播、设置、短剧、图床全部变亮；切黑夜全部变暗；首装跟随系统；电台（第三方 iframe）只有外层容器随主题
+
+## 24. 原生影视主页 / 直播 / 设置跟随站点白天黑夜主题（1.0.59）
+
+反馈：白天模式下打开「影视主页 / 直播 / 设置」三页仍是黑的（附 3 张截图：影视主页选中标签为紫色、直播为紫色渐变、设置为纯黑）。1.0.58 只切了外壳，原生三页并未真正跟随。
+
+### 排查结论
+
+- 主因1 配色：手机版 `Theme.Base` 继承 `Theme.Material3.DynamicColors.DayNight.NoActionBar`（`app/src/mobile/res/values/styles.xml`），Material3 动态取色按系统壁纸生成配色，原生控件（选中标签等）不取自站点配色。
+- 主因2 硬编码背景：`HomeActivity.java` 写死 `setBackgroundColor(0xFF0F1115)`，白天也是深色底。
+- 主因3 壁纸层：移动端所有 Activity 的 `BaseActivity.customWall()` 默认返回 `true`，会垫一层 `CustomWallView`；默认壁纸为 `WALL_DREAM_PURPLE`（梦幻紫霞），所以直播页呈紫色渐变。
+- 旁因：`WebHomeChromeController.useDarkIcons()` 用系统 `uiMode` 判断，绕过 `MoliysTheme`。
+
+### 方案（用户确认：默认改为「跟随主题」）
+
+1. `Theme.Base` 去掉 `DynamicColors`，改为 `Theme.Material3.DayNight.NoActionBar`，并用一整套 `moliys_*` 颜色覆盖 `colorPrimary`/`colorPrimaryContainer`/`colorSurface`/`colorSurfaceVariant`/`colorOnSurface`/`colorOnSurfaceVariant`/`colorOutline`/`colorSecondaryContainer` 等，白天/黑夜各一套（`app/src/main/res/values/moliys_theme.xml`、`app/src/main/res/values-night/moliys_theme.xml`）。
+2. 壳背景色 `moliys_bg` 单独放在 `moliys_shell.xml`：白天 `#FFF1F5FA`、黑夜 `#0F1115`，与 `MoliysTheme.SHELL_LIGHT/SHELL_DARK` 一致；`Theme.MoliysShell` 的 `windowLightStatusBar`/`windowLightNavigationBar` 同步分档。
+3. `Setting.java` 新增 `WALL_FOLLOW_THEME = 0`，`getWall()` 默认值由 `WALL_DREAM_PURPLE` 改为 `WALL_FOLLOW_THEME`；`getBuiltInWallName`/`getWallDesc` 返回「跟随主题」。已手动选过壁纸的用户保持原选择。
+4. `CustomWallView.java` 在「跟随主题」模式下改用 `MoliysTheme.shellBackground()` 作为底色（含缓存分支与 `getWallColor()`），不再走图片壁纸。
+5. `HomeActivity.java` 去掉 `setBackgroundColor(0xFF0F1115)`，改 `MoliysTheme.shellBackground()`。
+6. `BaseActivity.enableEdgeToEdge()` 按 `MoliysTheme.isLight()` 选择 `SystemBarStyle.light/dark`；`onResume()` 重新应用，保证切主题后状态栏图标正确。
+7. `WebHomeChromeController.useDarkIcons()` 改走 `MoliysTheme.isLight()`。
+8. `ToolbarTextAppearance`、`fragment_setting.xml` 的 `navigationIconTint` 改用 `?attr/colorOnSurface`。
+9. 直播页浅色可读性：`selector_live.xml`/`selector_live_text.xml`/`shape_live.xml`/`activity_live.xml` 里写死的白与半透明白改为 `?attr/colorSurfaceVariant`/`colorPrimaryContainer`/`colorOnSurface`/`colorOnSurfaceVariant`，白天不再出现白字白底。
+
+### 构建事故与修复
+
+- CI run `35537612560`（`d88f168d`）**失败**：`mergeMobileArm64_v8aReleaseResources` 报 `Duplicate resources` —— 新增的 `values/moliys_theme.xml` 与既有 `values/moliys_shell.xml` 同时定义了 `color/moliys_bg`。
+- 修复：`moliys_bg` 从两份 `moliys_theme.xml` 移除，只留在 `moliys_shell.xml`，并新增 `values-night/moliys_shell.xml` 提供黑夜档；`Theme.MoliysShell` 在两个 config 目录各定义一次（Android 的 style 不跨 config 合并）。
+- 重跑 run `35538200495`（`dabc6187`）第 1 次仍失败，日志显示是 CI 网络问题（`Downloading gradle-9.5.1-bin.zip` → `java.net.SocketException: Connection reset by peer`），与代码无关；`rerun-failed-jobs` 第 2 次 **success**。
+
+### 校验
+
+- 4 个新增/修改 XML 均通过格式校验。
+- 跨源码集重名扫描：同一源码集内不再有重复 `color` 资源；`moliys_*` 只出现在 `main` 源码集；day/night 覆盖完整（`moliys_icon_bg` 为不随主题变化的图标底色，故意只定义默认值）。
+- 原生编译本地不可用，由 fork CI `:app:assembleMobileArm64_v8aRelease` 验证通过。
+
+### 交付记录（1.0.59）
+
+- 代码提交：`5866f2f2`（原生三页跟随主题，12 文件 `+85/-20`）、`d88f168d`（直播浅色可读，4 文件 `+15/-14`）、`dabc6187`（重复资源修复，4 文件 `+15/-5`）
+- CI：run `35538200495`（head_sha `dabc6187`，第 2 次执行）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `60`，versionName `1.0.59`
+- APK SHA256：`c36a7aeddd5f177eb975be7685f8e18f20e6a6231d4a434f0e9d86a80855caa2`（141384703 字节）
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.59.apk`（HTTP 206，远端 141384703 字节）
+- 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
+- 待办：真机确认 切白天→影视主页、直播、设置全部变亮且无白字白底；切黑夜全部变暗；首装默认「跟随主题」；已选过壁纸的用户保留原壁纸
