@@ -299,3 +299,39 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 1. 接口页每行（原始/主/备份线路）都有「打开」，点后进入内置影视且底部标签隐藏。
 2. 未授权时「打开」与「设置」一起隐藏。
 3. 打开后可在「设置 → 接口」切回原接口。
+
+## 15. 直播页每行加「打开」按钮并直接进入直播播放（1.0.50）
+
+需求：直播页每条直播源（含原始线路/主线路/备份线路每一行）也加「打开」按钮，点击后按配置方式加载该直播源，并直接进入内置直播播放界面。
+
+站点侧（`site-src/index.html`）：
+
+- `renderLiveList()` 的 `lineRow()` 在「复制」后新增 `<button class="open-api-btn" data-kind="live" data-url data-name>打开</button>`，因此每条直播线路都有。
+- 复用接口页的 `.open-api-btn` 点击委托，按 `data-kind` 分流：`live` 调 `TVBoxNative.openLiveSource(name, url)`，其余调 `TVBoxNative.openInterface(name, url)`；非 App 环境仅 `alert` 提示。
+- 复用既有样式与 `body.no-license .open-api-btn { display: none !important; }`，未授权时直播「打开」与「设置」一起隐藏，无需新增 CSS。
+- `SITE_VERSION` 3.0.31→3.0.32；`config.json` 的 `site.version` 3.0.31→3.0.32。
+
+原生侧（`MainActivity`）：
+
+- 新增 `openLiveSource(name, url)`：`Config.find(url, name, 1)`（type 1 = 直播）+ `LiveConfig.load(cfg, cb)`，成功后 `openVideoLive()` 直接进入 `LiveActivity`，失败 Toast「直播源加载失败，请检查地址」。
+- 新增 Bridge `openLiveSource(String name, String url)`，未授权 Toast + 弹授权框（与 `openCaiSite`/`openInterface` 一致）。
+- `LiveConfig` 支持单仓 JSON、多仓 `urls`、以及纯文本电视源（`LiveParser.text`），三类直播源都能直接加载。
+
+已知行为：打开后该直播源成为当前激活直播源（写入配置表），可在「设置 → 直播」切回。
+
+版本：CODE 51 / NAME 1.0.50；`app/build.gradle` versionCode 51 / versionName 1.0.50；workflow tag `moliys-1.0.50`；site.pak 重打（78 文件，SHA256 `5da7918c7cbdf81c2dde3ae859bb79973ee3ca9a36fd5e75c8df98ab0d6a3a4b`）。
+
+交付记录（1.0.50）：
+
+- 代码提交：`6723f9fce28f89a0486c2cea30a12a5067bfd193`（7 文件）
+- CI：run `35522489175`（head_sha `6723f9fc`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `51`，versionName `1.0.50`，appname `过包名版本测试版`
+- APK SHA256：`415155764213db22d6d16e75d3c14c5c215f02edfa1c792de2f0e858cd832c9b`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.50.apk`（141384155 字节，HTTP 206/200）
+- 站点校验：3 段内联 JS 全部通过 `node --check`；重打后 pak 内可见 `SITE_VERSION = '3.0.32'`、直播行 `data-kind="live"` 按钮模板
+
+真机验证要点（1.0.50）：
+
+1. 直播页每行（原始/主/备份线路）都有「打开」，点后直接进入内置直播播放界面。
+2. 未授权时直播「打开」与「设置」一起隐藏。
+3. 打开后可在「设置 → 直播」切回原直播源。
