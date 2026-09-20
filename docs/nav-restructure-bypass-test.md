@@ -173,6 +173,16 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 
 版本：CODE 47 / NAME 1.0.46；`app/build.gradle` versionCode 47 / versionName 1.0.46；workflow tag `moliys-1.0.46`。
 
+交付记录（1.0.46）：
+
+- 代码提交：`1f3939c4976b071ab80587b02e905e5716cc43dc`（改动 6 文件：控制器/HomeActivity/Version/build.gradle/build.yml/本文档）
+- CI：run `35513346301`（head_sha `1f3939c4`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `47`，versionName `1.0.46`
+- APK SHA256：`989804784d5e650a8a5a528757af6c6ecd5cdc833b8cf8bf3254a3bc60e31214`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.46.apk`（141383631 字节，HTTP 200）
+
+验证方式说明：Release 构建 `minifyEnabled = !fastRelease`（默认 true），方法名被 R8 混淆，因此 dex 字符串探针无法确认方法存在性（`setNavigationVisible` 等既有方法同样 `MISSING`）。本版证据链为 git 提交 `1f3939c4` 内容核对 + CI run `35513346301` head_sha 一致。
+
 ## 11. 回滚
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
