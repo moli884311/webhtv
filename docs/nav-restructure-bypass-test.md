@@ -391,3 +391,30 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 2. 点「在线影视」「在线直播」进原生界面；未授权时两张卡片与「设置」一起隐藏。
 3. 点「点播」「直播」「采集」等卡片切到对应面板；点标签栏「首页」可回到主界面。
 4. 首页搜索框输入关键字可过滤卡片并自动隐藏空分组。
+
+## 17. 首页照设计稿、隐藏底部标签、主页 6 次设备码（1.0.52）
+
+反馈与改动：
+
+1. **样式跑偏** → 上一版把首页做成了蓝色渐变 hero 卡片，与设计稿不符。改回设计稿布局：删除 `.home-hero` 渐变块，改为「彩虹装饰条 + 居中头部（问候语 / 标题+版本角标 / 大号时钟 / 日期）」直接铺在页面背景上；分组标题「圆点 + 名称 + N 个」，卡片 `minmax(170px,1fr)`、白底细边框、40px 圆角图标块；窄屏 768px/480px 两档收敛。颜色仍用站点主题变量，深色主题跟随。
+2. **不要底部标签** → App 内嵌版隐藏站点自己的标签栏（`html.native-app .nav-tabs { display: none !important; }`，原样式把 `.nav-tabs` 固定到屏幕底部当标签栏），导航全部收敛到首页卡片。
+3. **返回首页** → 标签栏没了，新增悬浮 `#homeBackBtn`（仅 App 内显示，`html.native-app #homeBackBtn.show`），非首页面板自动出现，点击 `goTab('home')` 回首页；`showPanel()` 内同步显隐。
+4. **主页 6 次设备码** → 原注入逻辑只认 `data-tab="about"`（底部标签栏的「关于」按钮，现已隐藏）。首页头部三个元素（问候语、版本角标、时钟）加 `data-lic-tap="1"`，`injectVideoEntry()` 的注入脚本改为 `data-tab==='about' || data-lic-tap==='1'`，4 秒内连点 6 次即弹授权面板看设备码；「关于」标签路径保留兼容。
+
+站点校验（jsdom 加载重打后的 pak）：首页默认激活 + `home-mode`；时钟/日期正常、角标 v3.0.34；卡片 18 张；`data-lic-tap` 目标 3 个；返回按钮在首页隐藏、切到点播面板后为 `show`、点击回到首页。3 段内联 JS 通过 `node --check`。
+
+版本：CODE 53 / NAME 1.0.52；`app/build.gradle` versionCode 53 / versionName 1.0.52；workflow tag `moliys-1.0.52`；站点 `SITE_VERSION` 3.0.34；site.pak 重打（78 文件）。
+
+交付记录（1.0.52）：
+
+- 代码提交：`aaf064bdb65aeb8ccb7cacb92d1c5265c9b5369e`（7 文件）
+- CI：run `35526651203`（head_sha `aaf064bd`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `53`，versionName `1.0.52`，appname `过包名版本测试版`
+- APK SHA256：`32a3bc1ac477e857baf450ce617fb3cc0784087da6362211bd359e5fd23097d7`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.52.apk`（141386831 字节，HTTP 206/200）
+
+真机验证要点（1.0.52）：
+
+1. 启动即首页：顶部彩虹条 + 居中问候/标题/时钟/日期，无蓝色渐变卡片；底部不再有标签栏。
+2. 点任意卡片进入对应面板，右下角出现「返回首页」，点击回首页。
+3. 首页头部（版本角标 / 问候 / 时钟）任意一处 4 秒内连点 6 次，弹出授权面板显示设备码；点「复制设备码」可复制。
