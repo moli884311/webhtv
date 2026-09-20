@@ -64,7 +64,39 @@
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.42.apk`（141366879 字节，HTTP 200）
 - 待办：真机按第 5 节验收；通过后可同步 `过包名版本正式版`
 
-## 7. 回滚
+## 7. 第二轮调整（1.0.43）
+
+需求：
+
+1. 进入「设置」必须是单独设置页，**不显示原生底部三个标签**。
+2. 「影视主页」同样进原生界面，但**隐藏原生底部标签**（全屏原生影视首页）。
+3. **未授权时隐藏** 影视主页 / 在线直播 标签与顶部「设置」按钮（而非仅拦截）；解除授权后重新隐藏。
+
+实现：
+
+- 站点 `index.html`
+  - `renderTabs()` 过滤：`window.__moliysLicenseOk === false` 时不渲染 `online`/`liveapp` 两个标签。
+  - 新增授权 UI 块（`<script>` 尾部）：`licenseQuery()` 调 `TVBoxNative.isAuthorized()`；`applyLicenseUI(ok)` 控制 `#settingsBtn` 显隐、重渲染标签，并在当前停留在被隐藏标签时切回 `api`。
+  - 初始化执行一次，并在 `visibilitychange`（回到前台）与 `focus` 时复查；导出 `window.__moliysApplyLicense` 供原生主动推送。
+- 原生 `MainActivity.java`
+  - 新增 Bridge `isAuthorized()` 返回 `"1"/"0"`。
+  - 新增 `pushLicenseState(WebView)`：调用 `window.__moliysApplyLicense(true/false)`；在 `onResume` 的授权刷新回调与 `refreshLicense` 回调中调用。
+  - `openVideoHome()` → `startFongmiNav(HomeActivity, 0, true)`；`openVideoSettings()` → `startFongmiNav(HomeActivity, 1, true)`；`startFongmiNav(cls, position, hideNav)` 传递 `hide_nav` 并按 `NEW_TASK|CLEAR_TOP|SINGLE_TOP` 启动。
+- 原生 `HomeActivity.java`（mobile）
+  - 新增 `EXTRA_HIDE_NAV = "hide_nav"`；`checkAction()` 处理 `nav_position` 后若带 `hide_nav` 则 `setNavigationVisible(false)`。
+  - 新增 `navHidden` 字段（`setNavigationVisible` 同步）；`onBackInvoked()` 在 `navHidden` 时直接 `super.onBackInvoked()`，返回站点页而不是露出带底部标签的原生首页。
+
+版本：`Version.java` CODE 44 / NAME 1.0.43；`app/build.gradle` versionCode 44 / versionName 1.0.43；workflow tag `moliys-1.0.43`。
+
+验收清单（真机）：
+
+- [ ] 未授权：底部无「影视主页」「在线直播」，顶部无「设置」按钮
+- [ ] 授权后：三个入口出现；解除授权后立即消失
+- [ ] 点「设置」→ 单独设置页，底部无三个标签，返回键回到站点页
+- [ ] 点「影视主页」→ 原生影视首页全屏（无底部标签）
+- [ ] 「关于」连点 6 次仍可打开授权面板
+
+## 8. 回滚
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
 - 原生：`git revert` 对应提交，或恢复 `MainActivity.java` 中 `injectVideoEntry` 的悬浮按钮分支与 Bridge 方法。

@@ -598,6 +598,7 @@ public class MainActivity extends Activity {
                     if (changed) {
                         injectVideoEntry(webView);
                     }
+                    pushLicenseState(webView);
                 }
             });
         }
@@ -907,9 +908,9 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** 打开内置影视（webhtv 内核）首页。 */
+    /** 打开内置影视（webhtv 内核）首页，隐藏原生底部标签。 */
     private void openVideoHome() {
-        startFongmi("com.fongmi.android.tv.ui.activity.HomeActivity", null);
+        startFongmiNav("com.fongmi.android.tv.ui.activity.HomeActivity", 0, true);
     }
 
     /** 打开内置直播。 */
@@ -917,23 +918,41 @@ public class MainActivity extends Activity {
         startFongmi("com.fongmi.android.tv.ui.activity.LiveActivity", null);
     }
 
-    /** 打开内置影视并定位到「设置」页（HomeActivity 的 nav_position=1）。 */
+    /** 打开内置影视并定位到「设置」页（HomeActivity 的 nav_position=1），隐藏原生底部标签。 */
     private void openVideoSettings() {
-        startFongmiNav("com.fongmi.android.tv.ui.activity.HomeActivity", 1);
+        startFongmiNav("com.fongmi.android.tv.ui.activity.HomeActivity", 1, true);
     }
 
-    private void startFongmiNav(final String cls, final int position) {
+    private void startFongmiNav(final String cls, final int position, final boolean hideNav) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 try {
                     Intent intent = new Intent();
                     intent.setClassName(getPackageName(), cls);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                     intent.putExtra("nav_position", position);
+                    intent.putExtra("hide_nav", hideNav);
                     startActivity(intent);
                 } catch (Exception e) {
                     Toast.makeText(MainActivity.this, "打开设置失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    /** 把最新授权状态推给站点页，用于隐藏/显示 影视主页、在线直播、设置。 */
+    private void pushLicenseState(final WebView view) {
+        if (view == null) {
+            return;
+        }
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final boolean ok = LicenseManager.isAuthorized(MainActivity.this);
+                try {
+                    view.evaluateJavascript("window.__moliysApplyLicense&&window.__moliysApplyLicense(" + (ok ? "true" : "false") + ");", null);
+                } catch (Exception ignored) {
                 }
             }
         });
@@ -1112,11 +1131,17 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public String isAuthorized() {
+            return LicenseManager.isAuthorized(MainActivity.this) ? "1" : "0";
+        }
+
+        @JavascriptInterface
         public void refreshLicense() {
             LicenseManager.refresh(MainActivity.this, new LicenseManager.Callback() {
                 @Override
                 public void done(boolean changed) {
                     injectVideoEntry(webView);
+                    pushLicenseState(webView);
                 }
             });
         }

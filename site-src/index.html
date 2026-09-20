@@ -3447,7 +3447,9 @@ function scrollTabIntoView(tab, smooth) {
 
 function renderTabs() {
   const nav = document.getElementById('navTabs');
-  nav.innerHTML = tabsData.map(t => `<button class="nav-tab ${t.id === currentTabId ? 'active' : ''}" data-tab="${t.id}">${t.label}</button>`).join('');
+  const showLic = window.__moliysLicenseOk !== false;
+  const list = tabsData.filter(t => showLic || (t.id !== 'online' && t.id !== 'liveapp'));
+  nav.innerHTML = list.map(t => `<button class="nav-tab ${t.id === currentTabId ? 'active' : ''}" data-tab="${t.id}">${t.label}</button>`).join('');
   nav.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', function () {
       nav.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -3994,6 +3996,37 @@ ensureConfig().then(() => {
     if (!d || d.type !== 'tvbox-video-fs') return;
     setDuanjuFs(!!d.on, d.orient);
   });
+
+  /* ---------- 设备授权：未授权隐藏 影视主页/在线直播 标签与 设置 按钮 ---------- */
+  var LICENSE_TABS = ['online', 'liveapp'];
+
+  function licenseQuery() {
+    try {
+      if (window.TVBoxNative && typeof window.TVBoxNative.isAuthorized === 'function') {
+        return String(window.TVBoxNative.isAuthorized()) === '1';
+      }
+    } catch (e) {}
+    return true;
+  }
+
+  function applyLicenseUI(ok) {
+    window.__moliysLicenseOk = !!ok;
+    var btn = document.getElementById('settingsBtn');
+    if (btn) btn.style.display = ok ? '' : 'none';
+    try { if (typeof renderTabs === 'function') renderTabs(); } catch (e) {}
+    if (!ok && LICENSE_TABS.indexOf(currentTabId) !== -1) {
+      currentTabId = 'api';
+      try { if (typeof showPanel === 'function') showPanel('api'); } catch (e) {}
+      try { if (typeof renderTabs === 'function') renderTabs(); } catch (e) {}
+    }
+  }
+
+  window.__moliysApplyLicense = applyLicenseUI;
+  applyLicenseUI(licenseQuery());
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) applyLicenseUI(licenseQuery());
+  });
+  window.addEventListener('focus', function () { applyLicenseUI(licenseQuery()); });
 
   checkForceUpdate();
 })();</script>

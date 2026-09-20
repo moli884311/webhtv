@@ -60,6 +60,7 @@ import org.greenrobot.eventbus.ThreadMode;
 public class HomeActivity extends BaseActivity implements NavigationBarView.OnItemSelectedListener, WebHomeChromeController.Host {
 
     public static final String EXTRA_NAV_POSITION = "nav_position";
+    public static final String EXTRA_HIDE_NAV = "hide_nav";
     private static final String STATE_RETURN_VOD_FROM_ENHANCE = "returnVodFromEnhance";
     private static final String STATE_CURRENT_POSITION = "currentPosition";
 
@@ -70,6 +71,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     private boolean wideWindow;
     private int currentPosition;
     private boolean returnVodFromEnhance;
+    private boolean navHidden;
 
     @Override
     protected ViewBinding getBinding() {
@@ -119,6 +121,10 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         if (intent.hasExtra(EXTRA_NAV_POSITION)) {
             change(intent.getIntExtra(EXTRA_NAV_POSITION, 0));
             intent.removeExtra(EXTRA_NAV_POSITION);
+            if (intent.getBooleanExtra(EXTRA_HIDE_NAV, false)) {
+                intent.removeExtra(EXTRA_HIDE_NAV);
+                setNavigationVisible(false);
+            }
         } else if (Intent.ACTION_SEND.equals(intent.getAction())) {
             VideoActivity.push(this, intent.getStringExtra(Intent.EXTRA_TEXT));
         } else if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
@@ -215,6 +221,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     }
 
     public void setNavigationVisible(boolean visible) {
+        navHidden = !visible;
         RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) mBinding.container.getLayoutParams();
         if (visible) {
             params.addRule(RelativeLayout.ABOVE, R.id.navigation);
@@ -414,6 +421,8 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     protected void onBackInvoked() {
         if (mChrome != null && mChrome.consumeBack()) {
             return;
+        } else if (navHidden) {
+            super.onBackInvoked();
         } else if (!mBinding.navigation.getMenu().findItem(R.id.vod).isVisible()) {
             setNavigation();
         } else if (returnVodFromEnhance && mManager.isVisible(3)) {
