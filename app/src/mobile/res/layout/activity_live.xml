@@ -145,7 +145,8 @@
                 android:contentDescription="@string/live_control_source"
                 android:padding="11dp"
                 android:scaleType="centerInside"
-                android:src="@drawable/ic_live_source" />
+                android:src="@drawable/ic_live_source"
+                app:tint="?attr/colorOnSurfaceVariant" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/liveSetting"
