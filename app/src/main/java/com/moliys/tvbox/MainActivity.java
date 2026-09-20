@@ -647,14 +647,13 @@ public class MainActivity extends Activity {
         return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
     }
 
-    /** 站点页内注入「影视」入口（仅在授权有效期内）+「关于」连点 6 次看授权（仅 App 内生效）。 */
+    /** 站点页内注入「关于」连点 6 次看授权面板（仅 App 内生效）。影视入口已改为底部标签，不再注入悬浮按钮。 */
     private void injectVideoEntry(WebView view) {
         if (view == null || BuildConfig.LITE_EDITION) {
             return;
         }
-        final boolean authorized = LicenseManager.isAuthorized(this);
         final String js = "(function(){"
-                + "if(!window.__moliysLicTap){"
+                + "if(window.__moliysLicTap){return;}"
                 + "window.__moliysLicTap=true;var n=0,t=0;"
                 + "document.addEventListener('click',function(e){"
                 + "var el=e.target;"
@@ -665,18 +664,6 @@ public class MainActivity extends Activity {
                 + "var now=Date.now();if(now-t>4000){n=0;}t=now;n++;"
                 + "if(n>=6){n=0;try{window.TVBoxNative.openLicense();}catch(err){}}"
                 + "},true);"
-                + "}"
-                + (authorized
-                        ? "if(!window.__moliysTvBtn){"
-                                + "var b=document.createElement('div');b.textContent='影视';"
-                                + "b.style.cssText='position:fixed;right:16px;bottom:110px;z-index:2147483647;"
-                                + "padding:10px 18px;border-radius:22px;color:#fff;font-size:15px;font-weight:600;"
-                                + "background:linear-gradient(135deg,#1E6FEB,#7A4DFF);"
-                                + "box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;user-select:none';"
-                                + "b.onclick=function(){try{window.TVBoxNative.openVideo();}catch(err){}};"
-                                + "(document.body||document.documentElement).appendChild(b);"
-                                + "window.__moliysTvBtn=b;}"
-                        : "if(window.__moliysTvBtn){window.__moliysTvBtn.parentNode.removeChild(window.__moliysTvBtn);window.__moliysTvBtn=null;}")
                 + "})();";
         try {
             view.evaluateJavascript(js, null);
@@ -930,6 +917,28 @@ public class MainActivity extends Activity {
         startFongmi("com.fongmi.android.tv.ui.activity.LiveActivity", null);
     }
 
+    /** 打开内置影视并定位到「设置」页（HomeActivity 的 nav_position=1）。 */
+    private void openVideoSettings() {
+        startFongmiNav("com.fongmi.android.tv.ui.activity.HomeActivity", 1);
+    }
+
+    private void startFongmiNav(final String cls, final int position) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Intent intent = new Intent();
+                    intent.setClassName(getPackageName(), cls);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    intent.putExtra("nav_position", position);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "打开设置失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
     /** 以 ACTION_VIEW 交给 webhtv 内核导入接口（单仓/多仓 JSON 地址）。 */
     private void openVideoInterface(final String url) {
         if (url == null || url.length() == 0) {
@@ -1063,6 +1072,36 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void openVideoLive() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "直播功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.openVideoLive();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openVideoSettings() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "设置功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.openVideoSettings();
+                }
+            });
+        }
+
+        @JavascriptInterface
         public void openLicense() {
             showLicenseDialog();
         }
@@ -1094,7 +1133,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openLive() {
-            openVideoLive();
+            MainActivity.this.openVideoLive();
         }
 
         @JavascriptInterface

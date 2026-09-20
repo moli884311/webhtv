@@ -1,0 +1,86 @@
+[
+  {
+    "name": "SA视频",
+    "desc": "最新电影电视剧动漫综艺",
+    "url": "https://www.lsjys11.com/",
+    "icon": "online-icons/a5254a075986.ico",
+    "id": 1
+  },
+  {
+    "name": "91毒舌",
+    "desc": "最新Netflix新剧、4K高清（可访问）",
+    "url": "https://www.duse0.com/",
+    "icon": "",
+    "id": 2
+  },
+  {
+    "name": "青空次元",
+    "desc": "网友称最夯动漫在线站",
+    "url": "https://www.sorani.net",
+    "icon": "online-icons/f34d031a58e8.png",
+    "id": 3
+  },
+  {
+    "name": "APP影院",
+    "desc": "国内外热播剧，纯净无广告",
+    "url": "https://www.appmovie.art",
+    "icon": "online-icons/380a8a3fa218.ico",
+    "id": 4
+  },
+  {
+    "name": "电影人生",
+    "desc": "高清电影在线观看",
+    "url": "https://dyrs.tv",
+    "icon": "online-icons/f4ba07e6633e.ico",
+    "id": 5
+  },
+  {
+    "name": "泥视频",
+    "desc": "热门国剧，更新快，无广告",
+    "url": "https://www.nivod.vip",
+    "icon": "online-icons/719483c2fc8c.png",
+    "id": 6
+  },
+  {
+    "name": "PPnix",
+    "desc": "热门在线影视，速度快/纯净/无广告",
+    "url": "https://www.ppnix.com/cn/",
+    "icon": "online-icons/c133b5fbfa62.ico",
+    "id": 7
+  },
+  {
+    "name": "白嫖者联盟",
+    "desc": "热门热播剧，无广告速度快（需梯子）",
+    "url": "https://www.tdgo.shop",
+    "icon": "online-icons/02a6a0d200ed.svg",
+    "id": 8
+  },
+  {
+    "name": "爱电影",
+    "desc": "最新热门电影/电视剧（需梯子）",
+    "url": "https://kuhh4jo.com",
+    "icon": "online-icons/616afc52b4f3.png",
+    "id": 9
+  },
+  {
+    "name": "注视影视",
+    "desc": "国内海外影视剧资源（需梯子）",
+    "url": "https://gaze.red/",
+    "icon": "online-icons/5ac4f27763cb.png",
+    "id": 10
+  },
+  {
+    "name": "影视聚合",
+    "desc": "聚合多站影视资源",
+    "url": "https://zip0.com/",
+    "icon": "online-icons/a4b462107e88.svg",
+    "id": 11
+  },
+  {
+    "name": "搜剧ai",
+    "desc": "AI 搜剧，详情页播放器自带弹幕",
+    "url": "https://www.souju.ai/",
+    "icon": "online-icons/480e90874189.png",
+    "id": 12
+  }
+]
