@@ -96,6 +96,15 @@
 - [ ] 点「影视主页」→ 原生影视首页全屏（无底部标签）
 - [ ] 「关于」连点 6 次仍可打开授权面板
 
+交付记录（1.0.43）：
+
+- 代码提交：`fb25273b59dcf52b5bc408bdbbd29d25884cd1d0`
+- CI：run `35506743359`（commit fb25273b）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `44`，versionName `1.0.43`
+- APK SHA256：`972fd87c2f25f6d10876b75dbd5cb203534852d30b39ff5cbc0e2cad493c4a5c`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.43.apk`（141367247 字节，HTTP 200）
+- 备注：修复了仓库未提交 `site-src` 下中文文件名文件的问题（本机 `git config core.quotePath false`，否则任务守卫暂存会漏掉 CJK 文件名）
+
 ## 8. 回滚
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
