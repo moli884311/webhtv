@@ -918,12 +918,24 @@ public class MainActivity extends Activity {
         startFongmi("com.fongmi.android.tv.ui.activity.LiveActivity", null);
     }
 
+    /** 用内置 WebHome 加载指定站点首页（采集页「打开站点」）。 */
+    private void openWebHome(final String url) {
+        if (url == null || url.trim().length() == 0) {
+            return;
+        }
+        startFongmiNav("com.fongmi.android.tv.ui.activity.HomeActivity", 0, true, url.trim());
+    }
+
     /** 打开内置影视并定位到「设置」页（HomeActivity 的 nav_position=1），隐藏原生底部标签。 */
     private void openVideoSettings() {
         startFongmiNav("com.fongmi.android.tv.ui.activity.HomeActivity", 1, true);
     }
 
     private void startFongmiNav(final String cls, final int position, final boolean hideNav) {
+        startFongmiNav(cls, position, hideNav, null);
+    }
+
+    private void startFongmiNav(final String cls, final int position, final boolean hideNav, final String webHomeUrl) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -933,6 +945,9 @@ public class MainActivity extends Activity {
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                     intent.putExtra("nav_position", position);
                     intent.putExtra("hide_nav", hideNav);
+                    if (webHomeUrl != null && webHomeUrl.length() > 0) {
+                        intent.putExtra("web_home_url", webHomeUrl);
+                    }
                     startActivity(intent);
                 } catch (Exception e) {
                     Toast.makeText(MainActivity.this, "打开设置失败", Toast.LENGTH_SHORT).show();
@@ -1120,11 +1135,26 @@ public class MainActivity extends Activity {
             });
         }
 
+        /** 采集页「打开站点」：受同样的授权门禁，通过后用内置 WebHome 加载该站点首页。 */
+        @JavascriptInterface
+        public void openWebHome(final String url) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "该功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.openWebHome(url);
+                }
+            });
+        }
+
         @JavascriptInterface
         public void openLicense() {
             showLicenseDialog();
         }
-
         @JavascriptInterface
         public String getLicenseInfo() {
             return LicenseManager.statusJson(MainActivity.this);

@@ -788,6 +788,8 @@ body:not(.simple-mode) .search-box { margin-bottom: 14px; }
   white-space: nowrap;
   cursor: pointer;
   text-decoration: none;
+  font-family: inherit;
+  line-height: 1;
   transition: transform .05s, filter .15s;
   touch-action: manipulation;
   -webkit-user-select: none;
@@ -2105,7 +2107,7 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 const MODE_KEY = 'site_mode';
 const THEME_KEY = 'site_theme';
 /* 站点版本号：每次修复/变更后末位 +1，例如 3.0.0 -> 3.0.1 */
-const SITE_VERSION = '3.0.28';
+const SITE_VERSION = '3.0.29';
 const versionEl = document.getElementById('siteVersion');
 if (versionEl) versionEl.textContent = 'v' + SITE_VERSION;
 const btn = document.getElementById('modeToggleBtn');
@@ -2197,6 +2199,23 @@ if (liveEnterBtn) liveEnterBtn.addEventListener('click', function () {
   try {
     if (window.TVBoxNative && typeof window.TVBoxNative.openVideoLive === 'function') window.TVBoxNative.openVideoLive();
   } catch (e) {}
+});
+
+/* ===== 采集站：打开站点（原生用 WebHome 加载，未授权由原生拦截） ===== */
+document.addEventListener('click', function (e) {
+  const openBtn = (e.target && e.target.closest) ? e.target.closest('.cai-open') : null;
+  if (!openBtn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const home = openBtn.getAttribute('data-home');
+  if (!home) return;
+  try {
+    if (window.TVBoxNative && typeof window.TVBoxNative.openWebHome === 'function') {
+      window.TVBoxNative.openWebHome(home);
+      return;
+    }
+  } catch (err) {}
+  window.open(home, '_blank', 'noopener');
 });
 
 /* ===== 全局复制事件委托 ===== */
@@ -2721,7 +2740,7 @@ function renderCai() {
               ${statusPill(st, s.api)}
               <span class="url-tag">采集接口</span>
               <button class="copy-btn" data-url="${esc(s.api)}">复制</button>
-              <a class="cai-open" href="${esc(s.home)}" target="_blank" rel="noopener noreferrer">打开站点</a>
+              ${s.home ? '<button class="cai-open" data-home="' + esc(s.home) + '">打开站点</button>' : ''}
             </div>
             <span class="url-text">${esc(s.api)}</span>
           </div>

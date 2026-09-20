@@ -83,7 +83,9 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        setIntent(intent);
         checkAction(intent);
+        if (intent.hasExtra("web_home_url")) RefreshEvent.home();
     }
 
     @Override

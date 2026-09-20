@@ -183,7 +183,27 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 
 验证方式说明：Release 构建 `minifyEnabled = !fastRelease`（默认 true），方法名被 R8 混淆，因此 dex 字符串探针无法确认方法存在性（`setNavigationVisible` 等既有方法同样 `MISSING`）。本版证据链为 git 提交 `1f3939c4` 内容核对 + CI run `35513346301` head_sha 一致。
 
-## 11. 回滚
+## 11. 采集页「打开站点」改用 WebHome（1.0.47）
+
+需求：采集列表里的「打开站点」不再跳外部浏览器/网页，改为用原生 WebHome 加载该站点首页；授权门禁与「影视主页」一致。
+
+站点侧（`site-src/index.html`）：
+
+- 卡片模板把 `<a class="cai-open" href target="_blank">打开站点</a>` 改为 `<button class="cai-open" data-home="...">`，`s.home` 为空时不渲染该按钮。
+- 新增点击委托：存在 `TVBoxNative.openWebHome` 时调用它，否则回退 `window.open(home,'_blank')`（纯网页环境保留原行为）。
+- `.cai-open` 补 `font-family: inherit; line-height: 1;` 以匹配 `<button>` 默认样式。
+- `SITE_VERSION` 3.0.28→3.0.29；`config.json` 的 `site.version` 3.0.27→3.0.29（页面版本角标来源）。
+
+原生侧：
+
+- `MainActivity`：新增 `openWebHome(String url)`，复用 `startFongmiNav(HomeActivity, 0, true, url)`；`startFongmiNav` 增加带 `web_home_url` extra 的重载。
+- Bridge 新增 `@JavascriptInterface openWebHome(String url)`，未授权时 Toast + 弹授权框（与 `openVideo`/`openVideoLive` 同规则）。
+- `VodFragment.getHome()` 支持临时覆盖：读取宿主 Activity Intent 的 `web_home_url`，构造一次性 `Site`（key `moliys_web_home`、name 取 host、homePage 取该 URL），**不写入用户配置**；`loadHome()` 与 `RefreshEvent.HOME` 两条路径都走 `getHome()`，因此保持一致。
+- `HomeActivity.onNewIntent` 增加 `setIntent(intent)`（否则复用实例时 `getIntent()` 仍是旧的 extra），并在带 `web_home_url` 时 `RefreshEvent.home()` 触发 WebHome 重新加载。
+
+版本：CODE 48 / NAME 1.0.47；`app/build.gradle` versionCode 48 / versionName 1.0.47；workflow tag `moliys-1.0.47`；site.pak 重打（78 文件，SHA256 `abaddf22e4849ac0cf7a9c9cec6a3814c084872bc9f01cc087d616dd55608a6b`）。
+
+## 12. 回滚
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
 - 原生：`git revert` 对应提交，或恢复 `MainActivity.java` 中 `injectVideoEntry` 的悬浮按钮分支与 Bridge 方法。
