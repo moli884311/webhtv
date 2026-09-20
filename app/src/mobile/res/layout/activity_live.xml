@@ -92,7 +92,7 @@
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:text="TV"
-                    android:textColor="@color/white_90"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="20sp"
                     android:textStyle="bold" />
             </FrameLayout>
@@ -109,7 +109,7 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="marquee"
                     android:singleLine="true"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="17sp"
                     tools:text="CCTV3" />
 
@@ -121,7 +121,7 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:text="@string/live_no_epg"
-                    android:textColor="@color/white_80"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="13sp" />
 
                 <com.google.android.material.textview.MaterialTextView
@@ -132,7 +132,7 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:text="@string/live_no_epg"
-                    android:textColor="@color/white_70"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="13sp" />
             </androidx.appcompat.widget.LinearLayoutCompat>
 
