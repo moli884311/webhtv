@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
@@ -590,6 +591,16 @@ public class MainActivity extends Activity {
             } catch (Throwable ignored) {
             }
         }
+        if (webView != null) {
+            LicenseManager.refresh(this, new LicenseManager.Callback() {
+                @Override
+                public void done(boolean changed) {
+                    if (changed) {
+                        injectVideoEntry(webView);
+                    }
+                }
+            });
+        }
     }
 
     private void callJs(final String fn, final String... args) {
@@ -636,28 +647,111 @@ public class MainActivity extends Activity {
         return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
     }
 
-    /** 站点页内注入原生「影视」入口（仅 App 内生效，不影响网页端）。 */
+    /** 站点页内注入「影视」入口（仅在授权有效期内）+「关于」连点 6 次看授权（仅 App 内生效）。 */
     private void injectVideoEntry(WebView view) {
         if (view == null || BuildConfig.LITE_EDITION) {
             return;
         }
+        final boolean authorized = LicenseManager.isAuthorized(this);
         final String js = "(function(){"
-                + "if(window.__moliysTvEntry){return;}"
-                + "window.__moliysTvEntry=true;"
-                + "function mk(txt,bottom,fn){"
-                + "var b=document.createElement('div');"
-                + "b.textContent=txt;"
-                + "b.style.cssText='position:fixed;right:16px;bottom:'+bottom+';z-index:2147483647;"
-                + "padding:10px 18px;border-radius:22px;color:#fff;font-size:15px;font-weight:600;"
-                + "background:linear-gradient(135deg,#1E6FEB,#7A4DFF);"
-                + "box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;user-select:none';"
-                + "b.onclick=fn;"
-                + "(document.body||document.documentElement).appendChild(b);"
-                + "return b;}"
-                + "mk('影视','110px',function(){try{window.TVBoxNative.openVideo();}catch(e){}});"
+                + "if(!window.__moliysLicTap){"
+                + "window.__moliysLicTap=true;var n=0,t=0;"
+                + "document.addEventListener('click',function(e){"
+                + "var el=e.target;"
+                + "while(el&&el!==document){"
+                + "if(el.getAttribute&&el.getAttribute('data-tab')==='about'){break;}"
+                + "el=el.parentNode;}"
+                + "if(!el||el===document){return;}"
+                + "var now=Date.now();if(now-t>4000){n=0;}t=now;n++;"
+                + "if(n>=6){n=0;try{window.TVBoxNative.openLicense();}catch(err){}}"
+                + "},true);"
+                + "}"
+                + (authorized
+                        ? "if(!window.__moliysTvBtn){"
+                                + "var b=document.createElement('div');b.textContent='影视';"
+                                + "b.style.cssText='position:fixed;right:16px;bottom:110px;z-index:2147483647;"
+                                + "padding:10px 18px;border-radius:22px;color:#fff;font-size:15px;font-weight:600;"
+                                + "background:linear-gradient(135deg,#1E6FEB,#7A4DFF);"
+                                + "box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;user-select:none';"
+                                + "b.onclick=function(){try{window.TVBoxNative.openVideo();}catch(err){}};"
+                                + "(document.body||document.documentElement).appendChild(b);"
+                                + "window.__moliysTvBtn=b;}"
+                        : "if(window.__moliysTvBtn){window.__moliysTvBtn.parentNode.removeChild(window.__moliysTvBtn);window.__moliysTvBtn=null;}")
                 + "})();";
         try {
             view.evaluateJavascript(js, null);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 授权面板：显示设备码、状态与剩余时间；连点站点「关于」6 次触发。 */
+    private void showLicenseDialog() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final String code = LicenseManager.deviceCode(MainActivity.this);
+                boolean auth = LicenseManager.isAuthorized(MainActivity.this);
+                String status;
+                if (auth) {
+                    status = "已授权，剩余 " + formatRemain(LicenseManager.remainingSeconds(MainActivity.this));
+                } else if (LicenseManager.hasRecord(MainActivity.this)) {
+                    status = "授权已到期";
+                } else {
+                    status = "未授权";
+                }
+                String msg = "设备码：" + code
+                        + "\n状态：" + status
+                        + "\n\n把设备码发到群里，管理员回复\n「授权 " + code + " 30」即可开通 30 天。";
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("影视功能授权")
+                        .setMessage(msg)
+                        .setPositiveButton("复制设备码", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                copyText(code);
+                            }
+                        })
+                        .setNegativeButton("刷新", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                LicenseManager.refresh(MainActivity.this, new LicenseManager.Callback() {
+                                    @Override
+                                    public void done(boolean changed) {
+                                        injectVideoEntry(webView);
+                                        Toast.makeText(MainActivity.this, "已刷新授权状态", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
+                        })
+                        .setNeutralButton("关闭", null)
+                        .show();
+            }
+        });
+    }
+
+    private static String formatRemain(long sec) {
+        if (sec <= 0) {
+            return "0 分钟";
+        }
+        long days = sec / 86400;
+        long hours = (sec % 86400) / 3600;
+        long mins = (sec % 3600) / 60;
+        if (days > 0) {
+            return days + " 天 " + hours + " 小时";
+        }
+        if (hours > 0) {
+            return hours + " 小时 " + mins + " 分";
+        }
+        return mins + " 分钟";
+    }
+
+    private void copyText(String text) {
+        try {
+            ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (cm != null) {
+                cm.setPrimaryClip(ClipData.newPlainText("设备码", text));
+                Toast.makeText(this, "设备码已复制", Toast.LENGTH_SHORT).show();
+            }
         } catch (Exception ignored) {
         }
     }
@@ -958,7 +1052,32 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "影视功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
                     enterVideo();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openLicense() {
+            showLicenseDialog();
+        }
+
+        @JavascriptInterface
+        public String getLicenseInfo() {
+            return LicenseManager.statusJson(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public void refreshLicense() {
+            LicenseManager.refresh(MainActivity.this, new LicenseManager.Callback() {
+                @Override
+                public void done(boolean changed) {
+                    injectVideoEntry(webView);
                 }
             });
         }
