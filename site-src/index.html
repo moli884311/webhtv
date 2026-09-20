@@ -105,20 +105,30 @@ input:focus, input:focus-visible {
   overflow-x: clip;
 }
 
-/* ===== 主题切换按钮 ===== */
+/* ===== 头部顶栏：主题切换 / 模式切换 / 设置（与 Logo 同行、同尺寸、垂直居中） ===== */
+.header-top {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+}
+
 #themeToggleBtn {
   position: absolute;
-  top: 14px;
-  left: 10px;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
   z-index: 999;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, .45);
   background: rgba(255, 255, 255, .15);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  font-size: 1rem;
+  font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -127,15 +137,15 @@ input:focus, input:focus-visible {
   touch-action: manipulation;
 }
 
-/* ===== 模式切换按钮 / App 内嵌的设置按钮（右上角，与主题按钮同一水平线） ===== */
 #modeToggleBtn,
 #settingsBtn {
   position: absolute;
-  top: 14px;
-  right: 10px;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
   z-index: 999;
-  min-width: 56px;
-  height: 36px;
+  min-width: 38px;
+  height: 38px;
   padding: 0 12px;
   border-radius: 50px;
   border: 1px solid rgba(255, 255, 255, .45);
@@ -165,7 +175,7 @@ html:not(.native-app) #settingsBtn { display: none !important; }
 .header-block {
   text-align: center;
   margin-bottom: 16px;
-  padding: 24px 16px 20px;
+  padding: 18px 16px 18px;
   border-radius: 20px;
   background: linear-gradient(135deg, #1e3a5f 0%, #0f2a4a 100%);
   border: 1px solid #1e3a5a;
@@ -186,6 +196,11 @@ html:not(.native-app) #settingsBtn { display: none !important; }
 }
 
 h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
   color: #fff;
@@ -194,13 +209,12 @@ h1 {
 }
 
 h1 .header-logo {
-  width: 2rem;
-  height: 2rem;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, .55);
   object-fit: cover;
-  vertical-align: -.5rem;
-  margin-right: 8px;
 }
 
 .site-version {
@@ -271,7 +285,8 @@ body[data-theme="light"] .header-divider { background: var(--border); }
 body[data-theme="light"] .subtitle { color: var(--text2); }
 
 body[data-theme="light"] #themeToggleBtn,
-body[data-theme="light"] #modeToggleBtn {
+body[data-theme="light"] #modeToggleBtn,
+body[data-theme="light"] #settingsBtn {
   border-color: rgba(30, 60, 100, .22);
   background: rgba(30, 60, 100, .06);
   color: var(--text-strong);
@@ -1508,13 +1523,14 @@ body[data-theme="dark"] #comic-content .api-item-meta span { color: var(--ok) !i
 @media (max-width: 600px) {
   body { padding: 14px 8px 6px; }
 
-  #themeToggleBtn { top: 10px; left: 8px; width: 32px; height: 32px; font-size: .9rem; }
-  #modeToggleBtn { top: 10px; right: 8px; min-width: 48px; height: 32px; font-size: .52rem; padding: 0 10px; }
+  #themeToggleBtn { width: 34px; height: 34px; font-size: .95rem; }
+  #modeToggleBtn, #settingsBtn { min-width: 34px; height: 34px; font-size: .54rem; padding: 0 10px; }
+  .header-top { min-height: 34px; }
 
-  .header-block { padding: 18px 12px 16px; margin-bottom: 12px; }
+  .header-block { padding: 14px 12px 14px; margin-bottom: 12px; }
   .main-card { padding: 14px 12px 12px; }
   h1 { font-size: 1.15rem; }
-  h1 .header-logo { width: 1.7rem; height: 1.7rem; vertical-align: -.4rem; }
+  h1 .header-logo { width: 34px; height: 34px; }
 
   .nav-tab { padding: 6px 16px; font-size: .75rem; }
   .api-item, .live-item { padding: 12px 12px; margin-bottom: 8px; }
@@ -1819,17 +1835,16 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 
 <div class="container">
 
-  <button id="themeToggleBtn" title="切换主题">🌙</button>
-
-  <button id="modeToggleBtn">切换<br>全能版</button>
-
-  <button id="settingsBtn" title="设置">设置</button>
-
   <div class="header-block">
-    <h1>
-      <img class="header-logo" id="siteLogo" src="x/jueson.jpg" alt="Logo">
-      <span id="siteTitle">海量接口搬运备份</span>
-    </h1>
+    <div class="header-top">
+      <button id="themeToggleBtn" title="切换主题">🌙</button>
+      <button id="modeToggleBtn">切换<br>全能版</button>
+      <button id="settingsBtn" title="设置">设置</button>
+      <h1>
+        <img class="header-logo" id="siteLogo" src="x/jueson.jpg" alt="Logo">
+        <span id="siteTitle">海量接口搬运备份</span>
+      </h1>
+    </div>
     <div class="header-divider"></div>
     <p class="subtitle"><span class="subtitle-main"><span class="qq-line" id="siteSubtitle">备用数据源，防屏不迷路</span><span class="site-version" id="siteVersion">v3.0.5</span></span><span class="qq-row"><span class="qq-line">误道者群聊：<button class="copy-btn copy-btn-qq" type="button" data-url="1067685939" title="点击复制 QQ 群号">点我复制群号</button></span><span class="qq-line">沫离群聊：<button class="copy-btn copy-btn-qq" type="button" data-url="367018090" title="点击复制 QQ 群号">点我复制群号</button></span></span></p>
   </div>
@@ -2115,7 +2130,7 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 const MODE_KEY = 'site_mode';
 const THEME_KEY = 'site_theme';
 /* 站点版本号：每次修复/变更后末位 +1，例如 3.0.0 -> 3.0.1 */
-const SITE_VERSION = '3.0.37';
+const SITE_VERSION = '3.0.38';
 const versionEl = document.getElementById('siteVersion');
 if (versionEl) versionEl.textContent = 'v' + SITE_VERSION;
 const btn = document.getElementById('modeToggleBtn');
