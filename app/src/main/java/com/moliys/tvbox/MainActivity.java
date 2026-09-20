@@ -701,7 +701,7 @@ public class MainActivity extends Activity {
                 }
                 String msg = "设备码：" + code
                         + "\n状态：" + status
-                        + "\n\n把设备码发到群里，管理员回复\n「授权 " + code + " 30」即可开通 30 天。";
+                        + "\n\n把设备码发到群里，等待管理员回复";
                 new AlertDialog.Builder(MainActivity.this)
                         .setTitle("影视功能授权")
                         .setMessage(msg)
