@@ -649,7 +649,7 @@ public class MainActivity extends Activity {
         return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
     }
 
-    /** 站点页内注入授权面板连点：首页头部（版本角标/问候/时钟）或「关于」连点 6 次看设备码。 */
+    /** 站点页内注入「关于」连点 6 次看授权面板（仅 App 内生效）。影视入口已改为底部标签，不再注入悬浮按钮。 */
     private void injectVideoEntry(WebView view) {
         if (view == null || BuildConfig.LITE_EDITION) {
             return;
@@ -660,7 +660,7 @@ public class MainActivity extends Activity {
                 + "document.addEventListener('click',function(e){"
                 + "var el=e.target;"
                 + "while(el&&el!==document){"
-                + "if(el.getAttribute&&(el.getAttribute('data-tab')==='about'||el.getAttribute('data-lic-tap')==='1')){break;}"
+                + "if(el.getAttribute&&el.getAttribute('data-tab')==='about'){break;}"
                 + "el=el.parentNode;}"
                 + "if(!el||el===document){return;}"
                 + "var now=Date.now();if(now-t>4000){n=0;}t=now;n++;"
@@ -673,7 +673,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** 授权面板：显示设备码、状态与剩余时间；首页头部或站点「关于」连点 6 次触发。 */
+    /** 授权面板：显示设备码、状态与剩余时间；连点站点「关于」6 次触发。 */
     private void showLicenseDialog() {
         runOnUiThread(new Runnable() {
             @Override
