@@ -121,6 +121,14 @@
 
 说明（待确认）：原生页面无法嵌进网页内部，站点面板里只能放 iframe 网页。若要把影视主页/在线直播放进站点面板，需要提供可嵌入的网页地址。
 
+交付记录（1.0.44）：
+
+- 代码提交：`e9eb0491d220c4fa8dafda8a689729dfaf5584ad`
+- CI：run `35511570157`（commit e9eb0491）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `45`，versionName `1.0.44`
+- APK SHA256：`b9c38591365d46cb9c688f00f51589f0be0477a7a5654aba1fc167f22ecc3297`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.44.apk`（141367247 字节，HTTP 200）
+
 ## 9. 回滚
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
