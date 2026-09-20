@@ -335,3 +335,59 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 1. 直播页每行（原始/主/备份线路）都有「打开」，点后直接进入内置直播播放界面。
 2. 未授权时直播「打开」与「设置」一起隐藏。
 3. 打开后可在「设置 → 直播」切回原直播源。
+
+## 16. 首页导航作为启动主界面（1.0.51）
+
+需求：把导航卡片页（原 `导航3(3).html` 设计稿）按实际情况改造成 App 启动后的主界面，卡片点击后跳转到各对应界面。
+
+实现方式：不新增页面、不改启动 URL。站点启动页 `index.html` 新增 `home` 面板并设为默认激活标签，导航卡片即主界面；卡片统一走已有的 `showPanel()` / 原生桥，不需要新增路由。
+
+站点侧（`site-src/index.html`）：
+
+- `tabsData` 首位新增 `{ id: "home", label: "首页", hideSearch: true }`；`currentTabId` 默认 `'api'` 改为 `'home'`；`api-panel` 去掉 `active`，新增 `home-panel` 并为 `active`。
+- 新增 `goTab(id)`：设置 `currentTabId` → `renderTabs()` → `showPanel(id)`；卡片点击统一调它。
+- `showPanel()` 首行增加 `document.body.classList.toggle('home-mode', tabId === 'home')`；`body.home-mode` 下隐藏页面原有的 `header-block` 与页面级搜索框，避免与首页自带头部重复。
+- 首页头部：问候语（按小时）+ 标题 + 版本角标（取 `SITE_VERSION`）+ 时钟 + 日期，`updateHomeClock()` 每 10s 刷新。
+- 首页自带搜索框 `#homeSearch` + `filterHomeCards()`，按卡片标题/副标题过滤，并自动隐藏空分类。
+- 卡片样式用站点主题变量（`--card/--border-soft/--text/--text2/--shadow`），深色主题跟随；窄屏（<=480px）两列。
+- `SITE_VERSION` 3.0.32→3.0.33；`config.json` 的 `site.version` 同步；`html.native-app` 下 `首页` 标签加 🏠 图标。
+
+卡片 → 目标界面映射（18 张，与 18 个标签一一对应）：
+
+| 分类 | 卡片 | data-go | 落点 |
+| --- | --- | --- | --- |
+| 影视观看 | 在线影视 | online | 原生影视首页（授权门禁） |
+| 影视观看 | 在线直播 | liveapp | 原生直播（授权门禁） |
+| 影视观看 | 直播聚合 / 短剧 / FM电台 | live / duanju / fm365 | 对应面板 |
+| 接口资源 | 点播 / 采集 | api / cai | 对应面板 |
+| 接口资源 | 弹幕 / EPG接口 | danmu / epg | 对应面板 |
+| 接口资源 | 音源 / 音乐 / 书源 / 漫画源 / 图床 | yinyuan / music / shuyuan / comic / imgbed | 对应面板 |
+| 工具 | 解密工具 / 直播源转换 / 下载 | parse / convert / download | 对应面板 |
+| 其他 | 关于 | about | 对应面板 |
+
+- 授权联动：`online`/`liveapp` 两张卡片带 `lic-only`，`body.no-license` 下隐藏（与「设置」按钮、「打开」按钮同一套状态）。
+- 简洁模式联动：`parse`/`convert`/`live`/`epg`/`download`/`danmu`/`about` 在简洁模式本就被 CSS 隐藏，对应卡片带 `full-only`，`body.simple-mode` 下隐藏，避免点到空面板。App 内 `currentMode` 被强制为 `full`，所以 App 内 18 张卡片全部可见。
+
+验证（`jsdom` 加载重打后的 site.pak 页面）：
+
+- 启动即 `home-panel` 激活、`body` 带 `home-mode`；时钟/日期/问候/版本角标（v3.0.33）正常；卡片 18 张；标签栏含「首页」。
+- 点「点播」卡片 → `api-panel` 激活、`home-mode` 移除、标签栏「点播」高亮。
+- 点标签栏「首页」→ 回到首页并恢复 `home-mode`。
+- 搜索「直播」→ 命中 在线直播/直播聚合/直播源转换，分类自动收敛为 2 个。
+
+版本：CODE 52 / NAME 1.0.51；`app/build.gradle` versionCode 52 / versionName 1.0.51；workflow tag `moliys-1.0.51`；site.pak 重打（78 文件）。
+
+交付记录（1.0.51）：
+
+- 代码提交：`d089dae4e8f7a41221c9a6a7208e993d3b64b846`（6 文件）
+- CI：run `35525366004`（head_sha `d089dae4`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `52`，versionName `1.0.51`，appname `过包名版本测试版`
+- APK SHA256：`be24906a03ba043d59cc5d477cec17b6ed4c1c13c5fb7a58dcd0593ecf754b81`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.51.apk`（141386411 字节，HTTP 206/200）
+
+真机验证要点（1.0.51）：
+
+1. 启动 App 直接看到导航主界面（问候/时钟/版本/搜索框 + 分组卡片），页面顶部原大标题与搜索框在首页隐藏。
+2. 点「在线影视」「在线直播」进原生界面；未授权时两张卡片与「设置」一起隐藏。
+3. 点「点播」「直播」「采集」等卡片切到对应面板；点标签栏「首页」可回到主界面。
+4. 首页搜索框输入关键字可过滤卡片并自动隐藏空分组。
