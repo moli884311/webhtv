@@ -32,6 +32,8 @@ final class WebHomeChromeController {
 
         boolean isWebHomeChromeActive();
 
+        boolean isNavigationForceHidden();
+
         void onWebHomeChromeChanged(String mode);
 
         void onWebHomeViewportChanged(WebHomeViewport viewport);
@@ -176,10 +178,11 @@ final class WebHomeChromeController {
 
     private void applyLayout() {
         boolean active = isActive();
-        boolean normal = !active || WebHomeChrome.NORMAL.equals(mode);
+        boolean chromeNormal = !active || WebHomeChrome.NORMAL.equals(mode);
+        boolean normal = chromeNormal && !host.isNavigationForceHidden();
         binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
         WebHomeViewport current = buildViewport();
-        int top = normal ? current.getSafeTop() : 0;
+        int top = chromeNormal ? current.getSafeTop() : 0;
         int bottom = normal ? current.getSafeBottom() : 0;
         binding.container.setPadding(0, top, 0, 0);
         binding.navigation.setPadding(0, 0, 0, bottom);

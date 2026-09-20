@@ -114,6 +114,12 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         if (!keepNavHidden) return;
         mBinding.getRoot().setBackgroundColor(0xFF0F1115);
         setNavigationVisible(false);
+        if (mChrome != null) mChrome.refreshLayout();
+    }
+
+    @Override
+    public boolean isNavigationForceHidden() {
+        return keepNavHidden;
     }
 
     @Override

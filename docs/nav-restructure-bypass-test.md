@@ -151,7 +151,29 @@
 - APK SHA256：`0e0f8367527f0fbf55781c3ad3fa79a686a5370a0aecd14b55ea91f4bfcaaf9c`
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.45.apk`（141383631 字节，HTTP 200）
 
-## 10. 回滚
+## 10. 第五轮修复（1.0.46）
+
+现象：1.0.45 真机已确认（关于 = `moliys-1.0.45`），进入设置页后底部 `影视 / 直播 / 设置` 仍存在。
+
+根因：真正的漏点在 `WebHomeChromeController.applyLayout()`（`app/src/mobile/java/.../WebHomeChromeController.java:180`）：
+
+```java
+binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
+```
+
+该方法由 insets 监听、`refreshLayout()` 等路径频繁触发，每次都会按 chrome 模式重算可见性，因此 `HomeActivity.setNavigationVisible(false)` 与 `keepNavHidden` 会被直接覆盖 —— 之前只在 `HomeActivity` 内部加防护，管不到控制器。
+
+修复：
+
+- `WebHomeChromeController.Host` 新增 `boolean isNavigationForceHidden();`。
+- `applyLayout()` 拆成两个判断：`chromeNormal`（原有 chrome 模式语义，仍决定顶部安全区）与 `normal = chromeNormal && !host.isNavigationForceHidden()`（决定底部标签可见性与底部安全区）。
+- `HomeActivity` 实现 `isNavigationForceHidden()` 返回 `keepNavHidden`；`applyKeepNavHidden()` 末尾调用 `mChrome.refreshLayout()` 立即按新规则重算。
+
+效果：无论控制器在 `initView` / `checkAction` / `onResume` 之后如何刷新，只要 `keepNavHidden` 为真，底部标签都会被置为 `GONE`。
+
+版本：CODE 47 / NAME 1.0.46；`app/build.gradle` versionCode 47 / versionName 1.0.46；workflow tag `moliys-1.0.46`。
+
+## 11. 回滚
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
 - 原生：`git revert` 对应提交，或恢复 `MainActivity.java` 中 `injectVideoEntry` 的悬浮按钮分支与 Bridge 方法。
