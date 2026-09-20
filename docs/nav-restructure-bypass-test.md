@@ -484,3 +484,24 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - 产物：package `com.fongmi.android.tvceshi`，versionCode `55`，versionName `1.0.54`
 - APK SHA256：`6668c71bce597e00a0b14cb1e393a57bf5d84aabb4fe10b96871754c5e754d04`
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.54.apk`（141384643 字节，HTTP 206/200）
+
+## 20. 弹幕列表改回显示源地址，应用时才拼接（1.0.55）
+
+反馈：1.0.54 把行内展示与「复制」的内容也换成了完整模板地址，长链接换行难看，也让「复制给其它壳子」变麻烦。要求**弹幕源地址保持原样**（方便别人复制），`/api/v2/fongmi/danmaku?name={name}&episode={episode}` 只在点「应用」时拼接。
+
+处理（仅站点侧 + 版本号，原生与后台配置不变）：
+
+- `renderDanmu()`：行内展示与「复制」按钮回到 `s.url`（源地址）；「应用」按钮仍带完整地址 `源地址 + danmu.api`。
+- 面板标题：改为「列表显示弹幕源地址，「复制」复制源地址给其它壳子，「应用」一键写入沫离 App」，并把格式行改为「应用时自动拼接：`{源地址}<模板>`」。
+- 拼接逻辑与后台配置沿用第 19 节：`danmuApiTemplate()` / `danmuApiUrl(source, tpl)`，模板仍来自 `config.json` 的 `danmu.api`，条目 `api` 可覆盖。
+- 版本：`SITE_VERSION` 3.0.36 → 3.0.37，`config.json` `site.version` 同步；`Version` CODE 56 / NAME 1.0.55；`app/build.gradle` versionCode 56 / versionName 1.0.55；workflow tag `moliys-1.0.55`；site.pak 重打（78 文件 2077468 字节，SHA256 `537b7b006eadc92d86131709cf3bbd7111c822988d536de75ba47c04e4acd82c`）。
+
+校验：3 段内联 JS `node --check` 通过；jsdom 载入重打后 `site.pak` 弹幕页 —— 行内显示 `http://ecs.dysobo.cn:9321/87654321`、`复制` 同值、`应用` 的 `data-url` 与原生回调为 `http://ecs.dysobo.cn:9321/87654321/api/v2/fongmi/danmaku?name={name}&episode={episode}`。
+
+交付记录（1.0.55）：
+
+- 代码提交：`65ccd181ecd335c8155ce24c15577301333fdc7b`（6 文件，`+11 / -11`）
+- CI：run `35530162528`（head_sha `65ccd181`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `56`，versionName `1.0.55`
+- APK SHA256：`339236666d0b2d8264260ac6936a46b34aad1d72661b0ecbc1c883698ee464da`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.55.apk`（141384655 字节，HTTP 206/200）
