@@ -143,6 +143,14 @@
 
 版本：CODE 46 / NAME 1.0.45；`app/build.gradle` versionCode 46 / versionName 1.0.45；workflow tag `moliys-1.0.45`。
 
+交付记录（1.0.45）：
+
+- 代码提交：`5ff2fce548b752e4b381487e44b3d0a2440575b8`
+- CI：run `35512499746`（commit 5ff2fce5）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `46`，versionName `1.0.45`
+- APK SHA256：`0e0f8367527f0fbf55781c3ad3fa79a686a5370a0aecd14b55ea91f4bfcaaf9c`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.45.apk`（141383631 字节，HTTP 200）
+
 ## 10. 回滚
 
 - 站点：`git revert` 对应提交后由 `site-src/` 重打 `site.pak`。
