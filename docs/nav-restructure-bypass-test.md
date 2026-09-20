@@ -440,3 +440,47 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - 1.0.50 安装包保留可下载：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.50.apk`
 
 回退锚点：1.0.51/1.0.52 的实现在 `d089dae4`（首页导航主界面）与 `aaf064bd`（照设计稿 + 隐藏底部标签 + 返回首页 + 主页 6 次设备码），如需重新取回可按这两个提交 cherry-pick。
+
+## 19. 弹幕接口「应用」按钮 + 后台配置弹幕格式（1.0.54）
+
+需求：
+
+1. 弹幕页每条接口加「应用」按钮，一键把弹幕接口写进 App（不再只靠复制粘贴）。
+2. 弹幕格式由后台配置，不写死在页面里；弹幕链接形如 `{源地址}/api/v2/fongmi/danmaku?name={name}&episode={episode}`。
+
+站点侧（`site-src/index.html`、`site-src/config.json`）：
+
+- 后台配置：`config.json` 新增 `danmu.api = "/api/v2/fongmi/danmaku?name={name}&episode={episode}"`；`danmu.json` 单条可用 `"api"` 覆盖（支持绝对地址或相对路径），页面只负责拼接。
+- 新增 `danmuApiTemplate()` / `danmuApiUrl(source, tpl)`：`SITE_CFG.danmu.api` 为默认模板，条目自带 `api` 优先。
+- `renderDanmu()`：行内展示完整弹幕链接（源地址 + 模板），新增 `.danmu-apply-btn`「应用」按钮（保留「复制」），面板标题补一行「弹幕格式：`{源地址}<模板>`」方便核对；`Promise.all([ensureConfig(), loadData('danmu')])` 保证后台配置先就绪。
+- 新增 `applyDanmu(name, api)`：有原生桥调 `TVBoxNative.applyDanmaku(name, api)`，纯网页环境 `alert('请在沫离 App 内使用该功能')`。
+- 授权门禁与「打开」一致：`body.no-license .danmu-apply-btn { display: none !important; }`。
+- 版本：`SITE_VERSION` 3.0.35 → 3.0.36，`config.json` `site.version` 同步。
+
+原生侧（`MainActivity.java`）：
+
+- Bridge 新增 `applyDanmaku(name, url)`：与 影视主页/接口打开 同一套授权门禁，未授权 Toast + 授权面板。
+- 新增私有 `applyDanmakuConfig(name, url)`：`DanmakuSetting.isValidApiUrl()` 校验后写入 `putApiUrl()`，并打开 `putLoad(true)` + `putAuto(true)`（`DanmakuApi.canSearch()` 需要三者同时成立才会在播放时自动搜弹幕），Toast「已应用：<源名>」。
+- 播放器侧无需改动：`DanmakuApi.newCall()` 原生支持含 `{name}`/`{episode}` 占位符的模板地址，直接替换后请求。
+
+打包与校验：
+
+- `tools/repack_site.py --site-dir site-src --out app/src/main/assets/site.pak --manifest-url https://tvbox.moliys.icu/apk/version-moliys.js --no-fetch` → 78 文件 2077452 字节，SHA256 `0498bba391a66beca627a0f2634104bca94d857b1f1cb81eade586874f07d034`。
+- 站点内联 JS 3 段 `node --check` 通过；jsdom 载入重打后 `site.pak` 页面：弹幕页渲染 12 条、12 个「应用」按钮，`data-url` 为完整模板地址，点击在无原生桥时 alert、注入 `TVBoxNative.applyDanmaku` 后回调 `("ecs源", "http://ecs.dysobo.cn:9321/87654321/api/v2/fongmi/danmaku?name={name}&episode={episode}")`；`body.no-license` 下按钮 `display:none`。
+- 版本：`Version` CODE 55 / NAME 1.0.54；`app/build.gradle` versionCode 55 / versionName 1.0.54；workflow tag `moliys-1.0.54`。
+
+验收清单（真机）：
+
+- [ ] 弹幕页每条都有「应用」「复制」，行内显示完整弹幕链接
+- [ ] 已授权点「应用」→ Toast「已应用：<源名>」，播放影片时自动拉取该源弹幕
+- [ ] 未授权：弹幕页不显示「应用」按钮；若已进入则点后在原生侧被拦截并弹授权面板
+- [ ] 纯网页打开弹幕页点「应用」→ 提示「请在沫离 App 内使用该功能」
+- [ ] 弹幕格式改动只需改后台 `config.json` 的 `danmu.api`，页面无需重发
+
+交付记录（1.0.54）：
+
+- 代码提交：`ecaef7269cfc745969b79a2102304b2e142692e9`（7 文件，`+84 / -16`）
+- CI：run `35528944706`（head_sha `ecaef726`）**success**
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `55`，versionName `1.0.54`
+- APK SHA256：`6668c71bce597e00a0b14cb1e393a57bf5d84aabb4fe10b96871754c5e754d04`
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.54.apk`（141384643 字节，HTTP 206/200）
