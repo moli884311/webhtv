@@ -2,12 +2,12 @@
 
 ## Recovery anchor
 
-- **目标**：在「过包名版本测试版」WebView 外壳里新增「自动站点」页：用户输入一个视频网站地址（或现成 JSON 配置），App 先自行探测是否是可识别的采集接口（苹果CMS JSON/XML），探测不到再用用户自带的 OpenAI 兼容大模型 API 识别，生成 TVBox 站点配置并加入站点列表；已添加的站点可在页面内查看与删除。
-- **验收标准**：见第 7 节 8 条。
-- **车道/范围**：`quick-fix` → 实施时按第 8 节分阶段，每阶段独立 guard 会话。预期触碰路径：`app/src/main/java/com/moliys/tvbox/AiSite.java`（新）、`AiSiteClient.java`（新）、`MainActivity.java`、`site-src/index.html`、`app/src/main/assets/site.pak`（重打包产物）、各 `strings.xml`。
-- **状态**：**设计方案待用户批准，尚未写任何实现代码。**
-- **下一步动作（唯一）**：用户确认第 11 节的 3 个待定项后，开始 S1（原生 `AiSite.java`）。
-- **回滚锚点**：本设计文档提交所在的 commit（`docs/F1-autosite-ai-site.md` 新增）；实施期各阶段 commit 见第 8 节。
+- **目标**：在「过包名版本测试版」原生**设置页**新增「自动站点」入口（一行 + 弹窗）：用户输入一个视频网站地址（或现成 JSON 配置），App 先自行探测是否是可识别的采集接口（苹果CMS JSON/XML），探测不到再用用户自带的 OpenAI 兼容大模型 API 识别，生成 TVBox 站点配置并加入站点列表；已添加的站点可在弹窗内查看与删除。
+- **验收标准**：见第 7 节 9 条。
+- **车道/范围**：`standard` → 实施时按第 8 节分阶段，每阶段独立 guard 会话。预期触碰路径：`app/src/main/java/com/moliys/tvbox/AiSite.java`（新）、`AiSiteClient.java`（新）、`AiSiteSetting.java`（新）、`app/src/main/java/com/fongmi/android/tv/ui/dialog/AiSiteDialog.java`（新）、`app/src/main/res/layout/dialog_ai_site.xml`（新）、`app/src/{mobile,leanback}/res/layout/*_setting_enhance.xml`、`app/src/{mobile,leanback}/java/**/SettingEnhance{Fragment,Activity}.java`、各 `strings.xml`。**不动 `MainActivity.java`、`TVBoxNative`、`site-src/index.html`、`site.pak`。**
+- **状态**：**设计方案已完成并按用户 4 项答复修订（§11）；APK 事实核对已完成（§4.5）。仍未写任何实现代码。**
+- **下一步动作（唯一）**：开始 S1 —— 新建 `AiSiteSetting.java` + `AiSite.java`（key 生成、单文件多站点读写、探测、配置生成与校验）并补本地单元测试。
+- **回滚锚点**：本设计文档提交所在 commit（`docs/F1-autosite-ai-site.md`）；实施期各阶段 commit 见第 8 节。
 
 ---
 
@@ -27,7 +27,9 @@
 
 ### 2.1 App 形态前提
 
-本 App 是 WebView 外壳（`com.moliys.tvbox`）包住 FongMi TVBox（`com.fongmi.android.tv`）。**用户可见的站点管理 UI 在网页里**，原生只提供桥接方法。星落的三张截图同样带 App 底部导航，说明其对应页面也在其 Web UI 内 —— 与本项目架构一致。
+本 App 是 WebView 外壳（`com.moliys.tvbox`）包住 FongMi TVBox（`com.fongmi.android.tv`）：网页（`site-src/index.html`）负责工具类页面，原生负责播放与**原生设置页**。既有「采集/弹幕」等入口在网页侧、经 `TVBoxNative` 桥接调原生能力。
+
+**本方案按用户要求把 UI 放在原生设置页**（见 D1），因此不新增网页 tab、不新增桥接 —— 与「采集」页做法不同，这是刻意的。
 
 - 网页源码 `site-src/index.html` → `tools/repack_site.py` → `app/src/main/assets/site.pak`（AES 解密，密钥 `SiteKeys.java`）
 - 加载：`app/src/main/java/com/moliys/tvbox/MainActivity.java:111,123-137`（`loadSitePak`）
@@ -125,28 +127,87 @@
 - 代价：**APK +16 MB 以上**；引入第二套运行时（Chaquopy）的构建与维护成本；本项目已有 quickjs 爬虫引擎，重复建设。
 - **否决**：与「精简版要瘦身」的既定目标直接冲突，收益不抵成本。
 
-### 方案 C（推荐）：原生探测优先 + 用户自带 Key 的 LLM 兜底 + 网页 UI
+### 方案 C（推荐）：原生探测优先 + 用户自带 Key 的 LLM 兜底 + **原生设置页 UI**
 
 - **探测优先**：先按 URL 形态与响应结构判断，能确定就不调 LLM（省 token、快、离线可用）。
 - **LLM 兜底**：探测不出时，把（截断并清洗过的）页面 HTML 交给用户配置的 OpenAI 兼容接口，要求输出受约束的 JSON。
-- **UI 落在网页**（`site-src/index.html` 新增 tab），与「采集/弹幕/接口」一致；原生只加桥接。
+- **UI 落原生设置页**（增强设置加一行 + `AiSiteDialog`，见 D1）；**不改网页、不加桥接**。
 - **持久化**：单个 `filesDir/moliys_ai_sites.json` 承载全部 AI 站点，统一由一条配置加载。
-- 体积：**0 增长**（纯 Java + 网页）。
+- 体积：**0 增长**（纯 Java，无新增原生库/网页资源）。
 - 否决 B 的理由同样成立；A 不满足需求。
+
+---
+
+## 4.5 星落 APK 事实核对（2026-09-21，仅本地 `/tmp` 分析，不入库）
+
+对 `/tmp/opencode/xingluo/xingluo-6.0.2.apk`（SHA256 `22b19871…2572`）做**只读事实提取**（DEX 字符串池 / `resources.arsc` / `assets/`），用于确认行为规格。
+
+**边界声明：只提事实，不反编译抄码。** 理由：`libmihomo.so` 是 Go 产物、反不出有意义的源码，且 mihomo 本身开源（MetaCubeX/mihomo）；星落与本仓库同 FongMi 血统，基础部分上游即开源；smali→Java 有损且无许可来源，抄进来等于引入不可维护代码。
+
+### 与 F1（自动站点）相关
+
+| 事实 | 证据（DEX 字符串） |
+|---|---|
+| 默认 AI 端点 | `https://api.siliconflow.cn/v1/chat/completions` |
+| 偏好键 | `aiUrl`/`aiKey`/`aiModel`（另有 `ai_url`/`ai_key`/`ai_model`） |
+| 提示词是**多步链式**，每步钉死一个 JSON schema | 列表页 `{"数组":"","标题":"","图片":"","链接":"","详情页链接":""}`；详情页 `{"线路数组":"","线路标题":"","播放数组":"","播放列表":"","播放标题":"","播放链接":"","解析":""}`；首页/分类 `{"站名":"","框架":"","分类":"","分类url":"","首页特例":"","特殊分类链接":""}` |
+| 产物形态 | **XBPQ 爬虫规则**（非 maccms JSON）；自检句「你是视频网站解析专家，必须严格按照【XBPQ(小暴脾气)爬虫框架】规则输出」 |
+| 输出纪律 | 「只返回JSON不要解释不要markdown」 |
+| 规则语法要素 | `{cateId}`/`{catePg}`/`{{线路标题}}`；选择器 `p:div.class`/`p:li.item`/`p:ul[class`；过滤 `[包含:a]`；`【指定/轮询】分类名--规则`；`【首页特例】` |
+
+### 与 F2/F3（去广）相关
+
+| 事实 | 证据 |
+|---|---|
+| 类名 | `com.fongmi.android.tv.player.AdRuleCollector` + `AdRuleLib` |
+| 偏好键 | `adRuleLibUrl`、`adRuleLibUrlText`、`ad_rule_collected` |
+| 字符串资源 | `ad_rule_lib_url_title`/`_hint`/`_no_url`/`_saved`/`_sync_failed`/`_loaded_msg`/`_loaded_title` |
+| **音频去广规则库在线地址** | `https://m3u8-ad-audio-rules-sync.ccfork.workers.dev/rules.json` |
+| 视频去广规则库默认占位 | `example.com/rules.json`（`resources.arsc`） |
+| 音频去广机制 | **音纹（音频指纹）探针**，非纯 HLS 切片匹配。文案：「跳过：音纹去广告开关未启用」「探针初始化失败，音纹去广告不可用」「可能这个源的广告指纹没采集过」「命中广告，请求跳转」「广告时长超出允许范围」「广告锚点范围无效」 |
+| 含义 | 星落去广 = 规则库同步 + 本地采集(`ad_rule_collected`) + 音纹探针三层。我方现有能力仅播放层 HLS 过滤（§2.6），差距真实存在，F2/F3 需按此重定范围 |
+
+### 与 F4（代理订阅）相关
+
+| 事实 | 证据 |
+|---|---|
+| 内核 | `libmihomo.so` + `com.fongmi.android.tv.proxy.MihomoManager`（mihomo 开源） |
+| 协议支持 | `type: vmess`/`vless`/`trojan`，`proxies=`、`proxies from JSON`（clash YAML/JSON 订阅解析） |
+| 内置分流 | 大段 `DOMAIN-SUFFIX,...,DIRECT` + 兜底 `MATCH,XYS_PROXY`（代理组名 `XYS_PROXY`） |
+| 注入点 | 内置本地 HTTP 服务：`POST /action?do=proxy_sub`（body `url=<订阅地址>`）→ 返回 `{msg}`；`assets/sub.html`(1313B) 是其 UI 壳；`fetch('/api')` 读日志 |
+| 文案 | 「代理地址推送」「只用于推送订阅地址」「请输入代理订阅 URL」「推送代理订阅」「订阅地址不能为空」「节点连接测试失败，未应用代理」「代理不可用」「命中代理[」「已路由至代理」「直播代理（PHP psy1 的 Java 版）用法：/ysp」 |
+| 含义 | 星落是**完整 mihomo 内核 + 内置订阅转换服务**；我方是 OkHttp 请求级 HTTP 代理（`ProxySetting.java`），差距是「接入一个内核」，工作量远大于 F1 |
+
+### 未获取到的事实（如实记录，不猜测）
+
+- 星落的 XBPQ 解释器实现 —— 无开源上游、未反编译，**不做**（理由见上）。
+- `m3u8-ad-audio-rules-sync.ccfork.workers.dev/rules.json` 的**实际内容与授权许可未核**（未抓取）。F3 实施前必须确认授权与格式，否则只能自建规则库。
 
 ---
 
 ## 5. 关键设计决策
 
-### D1. UI 位置 = 网页侧，不新增原生布局
+### D1. UI 位置 = 原生设置页（**用户已确认**，推翻本方案原网页侧设计）
 
-网页侧已有 18 个 tab 与成熟的面板/表单样式，且站点管理本身就是网页的职责；原生只加桥接方法。避免改 `fragment_setting.xml` / `activity_setting_enhance.xml` / leanback 三套布局与对应 Java。
+用户明确要求「UI 放在设置里面」，因此**改为原生**：
 
-### D2. 站点产物只可能是 type 1 或 type 0，**不含 type 3**
+- 入口行加在**增强设置**页，与既有 `shellProxy`/`customCsp` 同级 —— 这三者性质一致（高级、低频、需要原生能力），且 F4 代理订阅也必须贴着 `shellProxy`。
+  - mobile：`app/src/mobile/res/layout/fragment_setting_enhance.xml` 加一行，直接仿 `customCsp` 行（`:257-276`）：`androidx.appcompat.widget.LinearLayoutCompat` + `android:background="@drawable/shape_item"` + 标题 `MaterialTextView` + 右对齐状态 `TextView`（`gravity="end"` + `ellipsize="middle"`）。
+  - leanback：`app/src/leanback/res/layout/activity_setting_enhance.xml` 加同一行。
+  - 点击处理：`SettingEnhanceFragment.java:96` 同款 —— `mBinding.shellProxy.setOnClickListener(view -> ShellProxyDialog.show(this, this::setText))`。
+- 交互放在**新 Dialog**（仿 `dialog_shell_proxy.xml` + `ShellProxyDialog.java`），不新增 Activity/Fragment。
+- 导航事实（已核对）：网页「设置」按钮 → `TVBoxNative.openVideoSettings()`（`site-src/index.html:2254`）→ `MainActivity.java:1021` `startFongmiNav(HomeActivity, 1)` → `HomeActivity.java:178` `nav_position=1` = `SettingFragment`（基础设置）；增强设置是**另一个导航位置** `nav_position=3`（`HomeActivity.java:180`）。
+- **代价（已计入 §8）**：必须同时改 mobile + leanback 两套布局、两个 Java 文件，并补 `values`/`values-zh-rCN`/`values-zh-rTW` 三份字符串。这是「放设置里」的必然成本。
+
+> 待实现时确认（不阻塞设计）：入口行落「增强设置」（与 `shellProxy` 同页，推荐）还是「基础设置」（`openVideoSettings()` 的默认落点）。推荐前者，保持一致。
+
+### D2. 站点产物只可能是 type 1 或 type 0，**不含 type 3**（星落做法不同，已核对）
 
 - `type:3` 需要可执行的 spider（`jar`/`csp_*`），**LLM 无法凭空生成可运行爬虫**。
-- 因此 FL 的承诺边界：AI 负责「找出该站可用的接口与参数」，产出 **type 1（苹果CMS JSON）** 或 **type 0（网页/XML）** 站点。
+- 本方案的承诺边界：AI 负责「找出该站可用的接口与参数」，产出 **type 1（苹果CMS JSON）** 或 **type 0（网页/XML）** 站点。
 - 若目标站既无 maccms 接口、也无法用 type 0 表达，**如实报「识别失败」**，不允许伪造一个打不开的站点。这是本设计的诚实性底线。
+- **与星落的实质差异（证据见 §4.5）**：星落不生成 maccms JSON，而是让模型输出**「XBPQ(小暴脾气)规则」**——一套带 `{cateId}`/`{catePg}`/`{{线路标题}}` 变量、`p:div.class` jsoup 选择器、`[包含:a]` 过滤语法的**规则驱动爬虫描述**，再喂给它自带的解释器。**本仓库没有这套解释器**，其规则文本对我们不可执行。
+- 结论：F1 走「接口发现」路线（可稳健实现、可实测验证）；「规则驱动爬虫解释器」等价于自研 XBPQ，**另立任务 F1-B**，不在 F1 范围内。不因为星落这么做就假装我们也能。
 
 ### D3. 持久化用「单个分组配置」，不用 `CustomCspSetting` 注册表
 
@@ -198,28 +259,26 @@
 | `app/src/main/java/com/moliys/tvbox/AiSite.java` | 站点 key 生成、单文件多站点读写、探测（复用 `CaiSite.detectType` 思路但独立实现，不修改 `CaiSite`）、生成/校验配置、落盘 |
 | `app/src/main/java/com/moliys/tvbox/AiSiteClient.java` | OpenAI 兼容 `/chat/completions` 调用：请求构造、超时、重试、围栏剥离、JSON 解析；HTML 清洗与截断 |
 | `app/src/main/java/com/moliys/tvbox/AiSiteSetting.java` | `Prefers` 读写：`moliys_ai_url`、`moliys_ai_key`、`moliys_ai_model`、`moliys_ai_consent` |
+| `app/src/main/java/com/fongmi/android/tv/ui/dialog/AiSiteDialog.java` + `app/src/main/res/layout/dialog_ai_site.xml` | 设置页入口行的面板：目标地址输入、AI 地址/Key/模型、知情同意勾选、`AI识别` 按钮、已添加站点列表 + 删除。仿 `ShellProxyDialog.java` + `dialog_shell_proxy.xml` |
 
-### 6.2 新增桥接（`MainActivity` + `TVBoxNative` 注册处 `MainActivity.java:403`）
+### 6.2 桥接改动 = **无**（D1 改原生后的简化收益）
 
-| 方法 | 入参 | 出参 | 说明 |
-|---|---|---|---|
-| `getAiSiteConfig` | — | JSON | 返回 `{url, model, hasKey, consent}`；**不回传 Key 明文** |
-| `setAiSiteConfig` | url, key, model, consent | boolean | key 传空串表示「不修改现有 Key」 |
-| `listAiSites` | — | JSON 数组 | 读 `moliys_ai_sites.json` |
-| `aiDetectSite` | url | JSON | 探测/LMM 识别，成功返回 `{ok, site:{...}, source:"probe"|"ai"}`，失败返回 `{ok:false, msg}` |
-| `addAiSite` | site JSON | JSON | 追加并落盘 + 重载，返回 `{ok, url}` |
-| `removeAiSite` | key | JSON | 删除并落盘 + 重载 |
-| `openAiSites` | — | — | 加载并进入影视主页（复用 `openVideoHome()`） |
+原网页侧方案需要 7 个 `TVBoxNative` 桥接方法；D1 改为原生设置页后，弹窗直接调用 `AiSite`/`AiSiteClient`，**不需要新增任何 `@JavascriptInterface`**，也不必碰 `MainActivity.java:403` 的注册处与 `site-src/index.html`。
 
-异步一律仿 `CaiSite` 调用点写法：`new Thread(..., "...").start()` + `runOnUiThread`。
+异步一律仿 `CaiSite` 调用点写法：`new Thread(..., "...").start()` + `runOnUiThread`（`MainActivity.java:932` 附近）。
 
-### 6.3 网页侧改动（`site-src/index.html`）
+### 6.3 原生设置页改动（D1 已改为原生，**不动网页**）
 
-- `tabsData` 增 `{ id: "aisite", label: "自动站点", hideSearch: true }`（`:3572`）
-- 新增 `<div class="tab-panel" id="aisite-panel">`，仿 `cai-panel`（`:1962`）
-- 表单：视频网站地址或 JSON 配置 / API 地址 / AI Key / AI 模型名称 / 知情同意勾选 / `AI识别` + `确定`
-- 列表：「已添加站点」，每项带删除
-- 全部复用现有 CSS 变量，天然适配白天黑夜
+| 文件 | 改动 |
+|---|---|
+| `app/src/mobile/res/layout/fragment_setting_enhance.xml` | 在 `customCsp`（`:257`）附近加一行 `aiSite` + `aiSiteText`，仿 `:257-276` 结构 |
+| `app/src/mobile/java/com/fongmi/android/tv/ui/fragment/SettingEnhanceFragment.java` | `initEvent()`（`:71`）加 `mBinding.aiSite.setOnClickListener(view -> AiSiteDialog.show(this, this::setText))`；`setText()`（`:132`）加 `setAiSiteText()` 显示已添加站点数 |
+| `app/src/leanback/res/layout/activity_setting_enhance.xml` | 加同一行 |
+| `app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingEnhanceActivity.java` | 同步点击与文案 |
+| `app/src/main/res/values/strings.xml` + `values-zh-rCN` + `values-zh-rTW` | `setting_ai_site`、`setting_ai_site_count`、`ai_site_*` 系列 |
+| `app/src/main/res/layout/dialog_ai_site.xml` | 新面板（`BaseBottomSheetDialog`，仿 `dialog_shell_proxy.xml`） |
+
+配色走 `@color/white` 等既有主题色 + 复用 `shape_item`，**无新增硬编码颜色**，天然适配 1.0.61 的白天/黑夜调色板。
 
 ---
 
@@ -232,7 +291,8 @@
 5. 未配置 AI Key → 仅走探测路径；探测失败时提示「需要配置 AI 才能识别该站」，不得静默失败。
 6. AI Key 不出现在 logcat、不出现在 `moliys_ai_sites.json`、不出现在仓库任何文件。
 7. 已添加站点可删除；删除后列表与内核站点同步（重载后该站点消失）。
-8. 白天与黑夜主题下该页面配色与站点一致（复用现有 CSS 变量，无新增硬编码颜色）。
+8. 白天与黑夜主题下，设置页入口行与 `AiSiteDialog` 配色与 1.0.61 调色板一致（复用 `shape_item` 与既有主题色，无新增硬编码颜色）。
+9. mobile 与 leanback 两套设置页均有该入口行，行为一致。
 
 ---
 
@@ -241,10 +301,11 @@
 | 阶段 | 内容 | 验证 | 预估 |
 |---|---|---|---|
 | S1 | `AiSiteSetting` + `AiSite`：key 生成、单文件多站点读写、探测、配置生成与校验 | 本地单元测试 | ~40 min |
-| S2 | `AiSiteClient`：LLM 请求/超时/重试/围栏剥离/JSON 解析、HTML 清洗截断 | 本地单元测试（含 fixture 响应） | ~50 min |
-| S3 | `MainActivity` 桥接 6 个方法 + `TVBoxNative` 注册 | 编译 + 真机手测 | ~40 min |
-| S4 | `site-src/index.html` 新增 tab/面板/表单/列表 + 主题适配 | jsdom/jsmoke 校验 + 真机 | ~60 min |
-| S5 | 重打包 `site.pak` → 升版本 → CI → 下载校验 → 上传 → 真机验收 | 见第 9 节 | ~30 min |
+| S2 | `AiSiteClient`：LLM 请求/超时/重试/围栏剥离/JSON 解析、HTML 清洗截断、多步链式提示词 | 本地单元测试（含 fixture 响应） | ~60 min |
+| S3 | `AiSiteDialog` + `dialog_ai_site.xml` 面板（含列表、删除、知情同意） | 编译 + 真机手测 | ~50 min |
+| S4 | 设置页入口行：mobile + leanback 两套布局/Java + 三份 strings | 编译 + 真机手测 | ~45 min |
+| S5 | 升版本 → CI → 下载校验 → 上传 → 真机验收（**无 site.pak 重打包**，因不动网页） | 见第 9 节 | ~30 min |
+| S6 | 确认后在其余 5 个版本重复 S1~S5（**用户已要求一起做**，见 §11） | 每版本独立 CI | ~4 h（5 版本） |
 
 每阶段一个独立 `task_guard` 会话与一次提交；S5 完成后追加 docs 记录。
 
@@ -257,7 +318,7 @@
   - 多站点配置：追加/删除后 JSON 合法且其余站点不丢
   - LLM 响应解析：正常 JSON / ```json 围栏 / 前后夹文案 / 非法 JSON / 缺字段 / `type:3` 拒绝
   - D5 校验：`api` 不可达时必须判失败
-- **jsdom + jsmoke**：网页侧内联 JS 过 `node --check`，并用既有 harness 跑一遍面板渲染（`beforeParse` 注入 `TVBoxNative` 桩）
+- **jsdom + jsmoke**：S1~S5 **不动** `site-src/index.html`，因此本方案**跳过网页回归**，不需要 `node --check` / jsmoke
 - **真机**：第 7 节 8 条验收
 - **CI**：`./gradlew :app:assembleMobileArm64_v8aRelease --no-daemon`（本地无法编译 Android）
 
@@ -272,14 +333,20 @@
 | 把目标站 HTML 发给第三方有隐私争议 | D6 知情同意 + 只发清洗后前 100 KB |
 | AI Key 泄漏 | 只存 `Prefers`；桥接只回传 `hasKey`；不打日志 |
 | 与既有「采集」页行为混淆 | 新建独立页面与独立文件，不改 `CaiSite` 任何行为 |
-| 网页侧改动破坏现有 18 个 tab | 新增而非修改；jsmoke 回归 |
+| 设置页新增行打乱既有行序或 leanback 焦点 | 新增而非修改；把新行登记进 `reorderItems()`（`SettingEnhanceFragment.java:108`）；leanback 手测焦点链 |
 
-**回滚**：本次为纯新增（新类 + 新 tab + 新桥接 + 新文件）。回滚 = revert 对应 commit；遗留的 `filesDir/moliys_ai_sites.json` 是孤立文件，不影响 App，也不进仓库。**无数据库 schema 变更、无原生库变更、无 APK 体积变化。**
+**回滚**：本次为纯新增（新类 + 新 Dialog + 设置页新增行 + 新字符串）。回滚 = revert 对应 commit；遗留的 `filesDir/moliys_ai_sites.json` 是孤立文件，不影响 App，也不进仓库。**无数据库 schema 变更、无原生库变更、无 APK 体积变化。**
 
 ---
 
-## 11. 待用户确认项
+## 11. 用户已确认项（2026-09-21）
 
-1. **UI 位置**：确认「自动站点」做成网页新 tab（与采集/弹幕同级），而不是原生设置页的一行？二选一实现差异最大，本方案按网页侧设计。
-2. **AI 服务**：默认预填的 API 地址与模型名用什么？（星落截图是 `https://api.siliconflow.cn/v1/chat/completions` + `Qwen/Qwen2-7B-Instruct`）。Key 必须用户自填，不预置。
-3. **多版本落地范围**：F1 先在「过包名版本测试版」落地，确认后再复制到其余 5 个版本？还是本次就一起做？
+1. **UI 位置 = 原生设置页**（用户：「ui位置在设置里面」）。已据此重写 D1 / §6.2 / §6.3，删除原「网页新 tab + 7 个桥接方法」设计。
+2. **AI 服务**：**Key 一律不预置**（用户：「默认的ai服务key肯定不预置啊」）。API 地址与模型名作为**可改的默认占位**预填，参照星落实测值：`https://api.siliconflow.cn/v1/chat/completions` + `Qwen/Qwen2-7B-Instruct`。
+3. **多版本范围 = 一起做**（用户：「一起做吧」）。即「过包名版本测试版」跑通后接着覆盖其余 5 个版本，见 §8 S6。
+4. **APK 取材方式**（用户：「能从星落apk反编译找源码就找，别的地方找不到的apk里面有」）：
+   - **接受**：从 APK **提取事实**（§4.5，本轮已执行）。
+   - **不接受**：反编译抄源码 —— 理由见 §4.5（Go 产物反不出、同 FongMi 血统上游本就开源、smali 产物有损无许可）。
+   - 若某个事实确实只在星落里，请在对应功能确认时指名，按「提事实」口径处理。
+
+**剩余待定（不阻塞 S1 开工）**：入口行落「增强设置」（推荐，与 `shellProxy` 同级）还是「基础设置」（`openVideoSettings()` 的默认落点）。
