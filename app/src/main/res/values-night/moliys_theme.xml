@@ -2,7 +2,6 @@
 <!-- 沫离壳主题色（黑夜）：与站点黑夜配色保持一致 -->
 <resources>
 
-    <color name="moliys_bg">#0F1115</color>
     <color name="moliys_surface">#161B22</color>
     <color name="moliys_surface_variant">#1E2733</color>
     <color name="moliys_on_surface">#E6EDF5</color>

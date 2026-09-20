@@ -2,7 +2,6 @@
 <!-- 沫离壳主题色（白天）：与站点白天配色保持一致 -->
 <resources>
 
-    <color name="moliys_bg">#EDF1F6</color>
     <color name="moliys_surface">#FFFFFF</color>
     <color name="moliys_surface_variant">#E4EAF2</color>
     <color name="moliys_on_surface">#1A2B3D</color>
