@@ -731,9 +731,10 @@ body:not(.simple-mode) .search-box { margin-bottom: 14px; }
 .copy-btn:active { filter: brightness(.88); transform: scale(.96); }
 .copy-btn.copied { background: #3b9b6c; box-shadow: none; }
 
-/* ===== 线路行操作按钮：解密（复制明文）/ 查看站源（简洁版、全能版都显示） ===== */
+/* ===== 线路行操作按钮：解密（复制明文）/ 查看站源（简洁版、全能版都显示）/ 打开（App 内加载） ===== */
 .decrypt-btn,
-.viewsrc-btn {
+.viewsrc-btn,
+.open-api-btn {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -755,7 +756,11 @@ body:not(.simple-mode) .search-box { margin-bottom: 14px; }
 }
 
 .decrypt-btn:active,
-.viewsrc-btn:active { filter: brightness(.9); transform: scale(.96); }
+.viewsrc-btn:active,
+.open-api-btn:active { filter: brightness(.9); transform: scale(.96); }
+
+/* 未授权时隐藏「打开」入口（与影视主页/设置 同一套授权状态） */
+body.no-license .open-api-btn { display: none !important; }
 .decrypt-btn.dec-busy,
 .viewsrc-btn.dec-busy { opacity: .55; pointer-events: none; }
 .decrypt-btn.dec-done,
@@ -2107,7 +2112,7 @@ html.native-app #duanju-panel.dj-fs .embed-tip { display: none; }
 const MODE_KEY = 'site_mode';
 const THEME_KEY = 'site_theme';
 /* 站点版本号：每次修复/变更后末位 +1，例如 3.0.0 -> 3.0.1 */
-const SITE_VERSION = '3.0.30';
+const SITE_VERSION = '3.0.31';
 const versionEl = document.getElementById('siteVersion');
 if (versionEl) versionEl.textContent = 'v' + SITE_VERSION;
 const btn = document.getElementById('modeToggleBtn');
@@ -2213,6 +2218,24 @@ document.addEventListener('click', function (e) {
   try {
     if (window.TVBoxNative && typeof window.TVBoxNative.openCaiSite === 'function') {
       window.TVBoxNative.openCaiSite(name, api);
+      return;
+    }
+  } catch (err) {}
+  alert('请在沫离 App 内使用该功能');
+});
+
+/* ===== 接口页：打开（原生按配置方式加载该接口并进入影视，未授权由原生拦截） ===== */
+document.addEventListener('click', function (e) {
+  const openBtn = (e.target && e.target.closest) ? e.target.closest('.open-api-btn') : null;
+  if (!openBtn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const url = openBtn.getAttribute('data-url');
+  if (!url) return;
+  const name = openBtn.getAttribute('data-name') || url;
+  try {
+    if (window.TVBoxNative && typeof window.TVBoxNative.openInterface === 'function') {
+      window.TVBoxNative.openInterface(name, url);
       return;
     }
   } catch (err) {}
@@ -2658,7 +2681,8 @@ function renderApi() {
         + `<div class="url-line-top">${statusPill(statOf(u), u)}<span class="url-tag">${tag}</span>`
         + `<button class="copy-btn" data-url="${u}">复制</button>`
         + `<button class="decrypt-btn" data-decrypt="${u}" title="解密并复制明文配置">解密</button>`
-        + `<button class="viewsrc-btn" data-decrypt="${u}" data-name="${esc(it.name)}" title="查看解密后的站源列表">查看站源</button></div>`
+        + `<button class="viewsrc-btn" data-decrypt="${u}" data-name="${esc(it.name)}" title="查看解密后的站源列表">查看站源</button>`
+        + `<button class="open-api-btn" data-url="${u}" data-name="${esc(it.name)}" title="在 App 内用该接口打开影视">打开</button></div>`
         + `<span class="url-text">${u}</span></div>`;
       };
       let lines = '';
@@ -4031,6 +4055,7 @@ ensureConfig().then(() => {
 
   function applyLicenseUI(ok) {
     window.__moliysLicenseOk = !!ok;
+    try { document.body.classList.toggle('no-license', !ok); } catch (e) {}
     var btn = document.getElementById('settingsBtn');
     if (btn) btn.style.display = ok ? '' : 'none';
     try { if (typeof renderTabs === 'function') renderTabs(); } catch (e) {}

@@ -263,3 +263,33 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 1. 采集页点任一「打开站点」→ 授权通过后应加载该采集接口的配置并进入内置影视（不再出现网页）。
 2. 影视页应能浏览该采集接口的列表/详情，点集数能起播（苹果CMS 直连 m3u8）。
 3. 点击后可返回「设置 → 接口」切回原接口（采集接口会作为一条配置保留）。
+
+## 14. 接口页每行加「打开」按钮（1.0.49）
+
+需求：接口页所有接口（含原始线路/主线路/备份线路每一行）也加「打开」按钮，走与采集「打开站点」相同的隐藏+授权门禁流程。
+
+站点侧（`site-src/index.html`）：
+
+- `renderApi()` 的 `lineRow()` 在「查看站源」后新增 `<button class="open-api-btn" data-url data-name>打开</button>`，因此每条线路都有。
+- 新增 `.open-api-btn` 点击委托，调 `TVBoxNative.openInterface(name, url)`；非 App 环境仅 `alert` 提示。
+- CSS：`.open-api-btn` 复用 `.decrypt-btn/.viewsrc-btn` 线路按钮样式；新增 `body.no-license .open-api-btn { display: none !important; }`。
+- `applyLicenseUI()` 增加 `document.body.classList.toggle('no-license', !ok)`，未授权时该按钮随 `settingsBtn` 一起隐藏（重新渲染也不会漏）。
+- `SITE_VERSION` 3.0.30→3.0.31；`config.json` 的 `site.version` 3.0.30→3.0.31。
+
+原生侧：
+
+- `MainActivity` 删除原 ACTION_VIEW 版 `openVideoInterface(url)`，改为 `openInterfaceConfig(name, url)`：`Config.find(url, name, 0)` + `VodConfig.load(cfg, cb)`，成功后 `openVideoHome()`（即 `hide_nav=true`，与「影视主页」「采集打开站点」一致）。
+- Bridge `openInterface(String url)` 改为 `openInterface(String name, String url)`，未授权 Toast + 弹授权框（同 `openCaiSite`）。
+
+已知行为：与采集「打开站点」相同，打开后该接口成为当前激活接口（写入配置表，可在「设置 → 接口」切回）。
+
+版本：CODE 50 / NAME 1.0.49；`app/build.gradle` versionCode 50 / versionName 1.0.49；workflow tag `moliys-1.0.49`；site.pak 重打（78 文件，SHA256 `1c01c3bb1c6ba287b413d5ff572413acc69a41044e2b8cba857f908f06a93ff4`）。
+
+交付记录（1.0.49）：
+
+- 代码提交：待 CI 完成后回填
+- CI：待回填
+- 产物：package `com.fongmi.android.tvceshi`，versionCode 待回填，versionName 1.0.49
+- APK SHA256：待回填
+- 上传：待回填
+- 站点校验：3 段内联 JS 全部通过 `node --check`；重打后 pak 内可见 `SITE_VERSION = '3.0.31'`、`open-api-btn` 按钮模板与委托

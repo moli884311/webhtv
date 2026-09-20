@@ -1011,18 +1011,40 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** 以 ACTION_VIEW 交给 webhtv 内核导入接口（单仓/多仓 JSON 地址）。 */
-    private void openVideoInterface(final String url) {
-        if (url == null || url.length() == 0) {
+    /** 接口页「打开」：把该接口按配置方式加载（单仓/多仓 JSON 均可），再用内置影视浏览。 */
+    private void openInterfaceConfig(final String name, final String url) {
+        if (url == null || url.trim().length() == 0) {
             return;
         }
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "导入接口失败", Toast.LENGTH_SHORT).show();
-        }
+        final String cfgName = (name == null || name.trim().length() == 0) ? url.trim() : name.trim();
+        final String cfgUrl = url.trim();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Config cfg = Config.find(cfgUrl, cfgName, 0);
+                VodConfig.load(cfg, new Callback() {
+                    @Override
+                    public void success() {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                openVideoHome();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void error(String msg) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "接口加载失败，请检查地址", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                });
+            }
+        });
     }
 
     private void startFongmi(final String cls, final String url) {
@@ -1229,9 +1251,20 @@ public class MainActivity extends Activity {
             MainActivity.this.openVideoLive();
         }
 
+        /** 接口页「打开」：与 影视主页/采集打开站点 同一套授权门禁，通过后按配置方式加载该接口。 */
         @JavascriptInterface
-        public void openInterface(final String url) {
-            openVideoInterface(url);
+        public void openInterface(final String name, final String url) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "该功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.openInterfaceConfig(name, url);
+                }
+            });
         }
 
         @JavascriptInterface
