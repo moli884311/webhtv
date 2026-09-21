@@ -166,37 +166,44 @@ public final class AiSiteSelfTest {
         return item == null ? "" : item.optString(key, "").trim();
     }
 
+    private static void put(final JSONObject json, final String key, final Object value) {
+        try {
+            json.put(key, value);
+        } catch (Throwable e) {
+        }
+    }
+
     private static JSONObject step(final String name, final Object value) {
         JSONObject json = new JSONObject();
-        json.put("step", name);
-        json.put("ok", true);
-        json.put("value", value);
+        put(json, "step", name);
+        put(json, "ok", true);
+        put(json, "value", value);
         return json;
     }
 
     private static JSONObject skip(final String name) {
         JSONObject json = new JSONObject();
-        json.put("step", name);
-        json.put("ok", true);
-        json.put("value", SKIP);
+        put(json, "step", name);
+        put(json, "ok", true);
+        put(json, "value", SKIP);
         return json;
     }
 
     private static JSONObject drop(final JSONArray steps, final String name, final String error) {
         JSONObject json = new JSONObject();
-        json.put("ok", false);
-        json.put("step", name);
-        json.put("error", truncate(error));
-        json.put("steps", steps);
+        put(json, "ok", false);
+        put(json, "step", name);
+        put(json, "error", truncate(error));
+        put(json, "steps", steps);
         return json;
     }
 
     private static JSONObject fail(final String name, final Throwable e) {
         JSONObject json = new JSONObject();
-        json.put("ok", false);
-        json.put("step", name);
-        json.put("error", truncate(message(e)));
-        json.put("steps", new JSONArray());
+        put(json, "ok", false);
+        put(json, "step", name);
+        put(json, "error", truncate(message(e)));
+        put(json, "steps", new JSONArray());
         return json;
     }
 
