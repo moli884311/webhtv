@@ -746,3 +746,41 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.61.apk`（HTTP 206，远端 141384715 字节）
 - 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
 - 待办：真机确认 黑夜 影视主页 / 设置 / 直播 / 下载管理 的底色为蓝黑 `#0d1420` 而非纯黑、卡片为 `#141f31`、边框呈蓝灰；白天观感与 1.0.60 一致（仅 chip / 标签色微调）
+
+## 27. F1 自动站点（AI 识别建站）上线（1.0.62）
+
+按用户已批准的移植顺序，第一项「自动站点」在本版落地。功能目标是让用户只填一个网站地址，由 app 自己判断出可用的采集接口并加入站点列表，不需要用户手工找 `api`。设计依据与完整决策见当前工作区 内的 `docs/F1-autosite-ai-site.md`。
+
+### 实现方式
+
+- **入口**：原生「增强设置」页新增「AI 自动站点」行（与 `shellProxy` 同级，紧邻其后），mobile 与 leanback 两套布局/Java 同步；右侧摘要显示已添加站点数，为 0 时显示「未添加」。
+- **识别顺序（D7 探测优先）**：输入本身像接口 → 直接探测建站；输入是完整 JSON 配置 → 直接导入；抓首页 HTML 找线索 → 直接建站；都不中且用户已配置 AI → 才把清洗后的页面内容发给模型；都不中且未配置 AI → 提示需要先配置 AI。即「能用探测解决就不调模型」，省额度也更快。
+- **模型调用**：OpenAI 兼容 `POST`，`Authorization: Bearer`，`json_object` 模式 + `temperature 0.2`，超时 60s、失败重试 1 次；服务端不支持 `response_format` 时自动退回纯文本模式。送出前 HTML 去 `script`/`style` 并截断 100KB。
+- **密钥与隐私**：AI Key **不预置**，用户自填，只存 `Prefers`，不回显、不打日志、不进站点配置；首次使用需勾选知情同意。API 地址与模型名给出可修改的占位默认值。
+- **落盘**：站点写入独立分组配置 `filesDir/moliys_ai_sites.json`，key 为 `moliys_ai_` + host/api 摘要，与既有「采集站」的 `moliys_cai` 互不冲突；识别失败不改动已有配置。
+- **不碰网页**：整条链路走原生，因此**不需要**任何 `@JavascriptInterface` 桥接，也不需要重打 `site.pak`。
+
+### 新增文件
+
+- `app/src/main/java/com/moliys/tvbox/AiSite.java`（探测、校验、配置读写、D7 编排）
+- `app/src/main/java/com/moliys/tvbox/AiSiteSetting.java`（AI 偏好读写）
+- `app/src/main/java/com/moliys/tvbox/AiSiteClient.java`（OpenAI 兼容调用）
+- `app/src/main/java/com/fongmi/android/tv/ui/dialog/AiSiteDialog.java` + `dialog_ai_site.xml` + `adapter_ai_site.xml`
+- 三语 strings 各新增 23 个 AI 键
+
+### 校验
+
+- S1 harness 48 断言、S2 harness 108 断言（对本地 HttpServer 真实 POST 往返）、S3a harness 36 断言，全部通过。
+- S3b：21 个布局 id 覆盖全部 binding 字段引用；13 个布局字符串键 + 11 个 Java 字符串键在三语 strings 全部存在且占位符与调用参数匹配；缺失的颜色与样式经比对确认与已发布模板 `dialog_shell_proxy.xml` 同源（构建期依赖提供）。
+- S4：mobile 布局 34 个 id 与 Java 34 个 `mBinding` 引用 1:1 全命中，leanback 35 与 35 全命中；两个布局 XML 良构。
+- 原生编译本地不可用（无 build-tools），由 fork CI 验证：S3b 的 run `35548102456` 与 1.0.62 的 run `35548522661` 均 **success**，即对话框、两个布局、字符串资源与 ViewBinding 生成均通过真实 AGP 构建。
+
+### 交付记录（1.0.62）
+
+- 代码提交：`2dc8395e`（S1 基础层 `+409`）、`1804a4e7`（S2 AI 客户端 `+391`）、`08151a0c`（文档：记录全 app trust-all TLS 已知风险与不修理由）、`e48ee340`（S3a D7 探测编排 `+63`）、`ad734b58`（S3b 对话框与两个布局 `+739`）、`b9237517`（S4 设置页入口行 `+84`）、`29a20a9e`（升版本 1.0.62 / code 63，3 文件 `+5/-5`）
+- 恢复标签：`recovery/F1-autosite-s2/20260921080733-1804a4e7bba4`、`recovery/F1-tls-risk-note/20260921081050-08151a0c4f29`、`recovery/F1-autosite-s3a/20260921081627-e48ee34075bf`、`recovery/F1-autosite-s3b/20260921083335-ad734b587ee5`、`recovery/F1-autosite-s4/20260921084018-b92375177b09`、`recovery/F1-autosite-s5/20260921084154-29a20a9ed979`
+- 产物：package `com.fongmi.android.tvceshi`，versionCode `63`，versionName `1.0.62`，App 名 `过包名版本测试版`
+- APK SHA256：`34155e9b6e1ffb128d9aa5c269eecdece9b251ab921cbc15a73d67050cc7126d`（141399863 字节）
+- 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.62.apk`（HTTP 206，远端 141399863 字节）
+- 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
+- 待办：真机验收 D7 四个分支（像接口的输入直接建站、首页 HTML 探测、完整 JSON 配置导入、需 AI 时提示先配置）与站点增删；验收通过后按 §8 S6 复制到其余 5 个版本

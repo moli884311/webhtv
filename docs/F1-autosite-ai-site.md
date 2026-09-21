@@ -299,16 +299,35 @@
 
 ## 8. 分阶段实施计划
 
-| 阶段 | 内容 | 验证 | 预估 |
+| 阶段 | 内容 | 验证 | 状态 |
 |---|---|---|---|
-| S1 | `AiSiteSetting` + `AiSite`：key 生成、单文件多站点读写、探测、配置生成与校验 | 本地单元测试 | ~40 min |
-| S2 | `AiSiteClient`：LLM 请求/超时/重试/围栏剥离/JSON 解析、HTML 清洗截断、多步链式提示词 | 本地单元测试（含 fixture 响应） | ~60 min |
-| S3 | `AiSiteDialog` + `dialog_ai_site.xml` 面板（含列表、删除、知情同意） | 编译 + 真机手测 | ~50 min |
-| S4 | 设置页入口行：mobile + leanback 两套布局/Java + 三份 strings | 编译 + 真机手测 | ~45 min |
-| S5 | 升版本 → CI → 下载校验 → 上传 → 真机验收（**无 site.pak 重打包**，因不动网页） | 见第 9 节 | ~30 min |
-| S6 | 确认后在其余 5 个版本重复 S1~S5（**用户已要求一起做**，见 §11） | 每版本独立 CI | ~4 h（5 版本） |
+| S1 | `AiSiteSetting` + `AiSite`：key 生成、单文件多站点读写、探测、配置生成与校验 | harness 48 断言 | 已完成 `2dc8395e` |
+| S2 | `AiSiteClient`：LLM 请求/超时/重试/围栏剥离/JSON 解析、HTML 清洗截断、多步链式提示词 | harness 108 断言（对本地 HttpServer 真实 POST 往返） | 已完成 `1804a4e7` |
+| S3a | D7 探测优先编排：`AiSite.looksLikeApi`/`fromHomepageHtml`/`parseConfigText` | harness 36 断言 | 已完成 `e48ee340` |
+| S3b | `AiSiteDialog` + `dialog_ai_site.xml` + `adapter_ai_site.xml` | 资源/签名静态校验 + CI 编译通过 | 已完成 `ad734b58` |
+| S4 | 设置页入口行：mobile + leanback 两套布局/Java | mBinding 引用 34/34、35/35 全命中 + CI 编译通过 | 已完成 `b9237517` |
+| S5 | 升版本 → CI → 下载校验 → 上传 → 真机验收（**无 site.pak 重打包**，因不动网页） | CI success + APK 字段校验 + 上传 206 | 已完成 `29a20a9e` |
+| S6 | 确认后在其余 5 个版本重复 S1~S5（**用户已要求一起做**，见 §11） | 每版本独立 CI | **待真机验收通过后开工** |
 
 每阶段一个独立 `task_guard` 会话与一次提交；S5 完成后追加 docs 记录。
+
+### 8.1 S3 实际拆成 S3a / S3b
+
+原 S3 同时含「探测编排逻辑」与「对话框与布局」。实施时拆开：S3a 只加 `AiSite` 内的 D7 编排（纯逻辑，可用 harness 断言），S3b 才加 UI 三件套。拆分让纯逻辑部分拿到了 36 条断言的本地验证，UI 部分留给 CI 编译验证。
+
+### 8.2 实施中发现并处理的问题
+
+- **跨包可见性**：`AiSite.isHttpUrl` 原为包内可见，而 `AiSiteDialog` 在 `com.fongmi.android.tv.ui.dialog` 包，无法调用。处理方式是**不改** `AiSite.java`（该文件属 S1/S3a 已提交范围），改为在对话框内加等价的私有 `isHttp` 助手，语义与 `AiSite.isHttpUrl` 一致（必须带主机名的 http/https），并与仓库既有 `WebActivity.isHttp` 写法保持一致。
+- **复用资源**：`dialog_outlined_button_*`、`dialog_primary_button_*`、`dialog_tonal_button_*` 与样式 `Widget.Material3.Button*`、`ThemeOverlay_WebHTV_LightDialog` 在仓库内无定义，来自构建期依赖；这与已发布的 `dialog_shell_proxy.xml` 所用引用完全相同，因此直接复用。
+- **字符串复用**：S4 未新增字符串，直接复用 S3b 已加入三语 strings 的 `setting_ai_site`、`setting_ai_site_count`、`setting_ai_site_none`。
+
+### 8.3 S5 产物
+
+- 版本：`1.0.62` / code `63`；包名 `com.fongmi.android.tvceshi`；App 名 `过包名版本测试版`
+- CI：run `35548522661` success（S3b 的 run `35548102456` 亦 success，即对话框与两个布局已通过 AGP 资源合并与 ViewBinding 生成）
+- APK：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.62.apk`，141399863 字节，SHA256 `34155e9b6e1ffb128d9aa5c269eecdece9b251ab921cbc15a73d67050cc7126d`
+
+**待用户真机验收**：在增强设置页进入「AI 自动站点」，验证 D7 各分支（像接口的输入直接建站、首页 HTML 探测、完整 JSON 配置导入、需要 AI 时提示配置 AI）与站点增删。
 
 ---
 
