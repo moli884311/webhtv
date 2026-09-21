@@ -24,13 +24,15 @@ import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.databinding.AdapterAiSiteBinding;
 import com.fongmi.android.tv.databinding.DialogAiSiteBinding;
+import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Task;
-import com.github.catvod.net.OkHttp;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.moliys.tvbox.AiSite;
 import com.moliys.tvbox.AiSiteClient;
+import com.moliys.tvbox.AiSiteProbe;
+import com.moliys.tvbox.AiSiteSelfTest;
 import com.moliys.tvbox.AiSiteSetting;
 
 import org.json.JSONArray;
@@ -42,14 +44,11 @@ import java.util.List;
 /**
  * 「AI 自动站点」面板：输入一个网站地址，识别出可用的采集接口并加入站点列表。
  *
- * <p>识别顺序按 D7 探测优先：先看输入本身是不是接口，再从首页 HTML 里找线索，
- * 都不命中且用户已配置 AI 时才把页面内容发给模型。只有探测与 AI 都失败才报错，
- * 且任何失败都不会改动已有的站点配置。站点识别成功后会把该分组设为当前接口配置，
- * 否则新站点不会出现在影视主页的站源列表里。
+ * <p>建站走四步（§12.3）：探测（本机，不耗 AI）→ AI 写源 → 本机自检 → 落盘注册。
+ * 新站以「自定义源」条目并入用户当前接口配置的站点列表，原源与排序不变，不切换分组。
+ * 探测或自检失败都不会改动注册表，用户看到的站点列表保持原样。
  */
 public class AiSiteDialog extends BaseAlertDialog {
-
-    private static final long FETCH_TIMEOUT = 15000L;
 
     private DialogAiSiteBinding binding;
     private SiteAdapter adapter;
@@ -207,6 +206,10 @@ public class AiSiteDialog extends BaseAlertDialog {
             Notify.show(R.string.ai_site_need_consent);
             return;
         }
+        if (!Setting.hasFileAccess()) {
+            Notify.show(R.string.setting_custom_csp_permission_required);
+            return;
+        }
         persistFields();
         added = false;
         running = true;
@@ -230,25 +233,86 @@ public class AiSiteDialog extends BaseAlertDialog {
         updateActions();
         if (added) AiSite.reloadConfigs();
         refreshSites();
+        status(message);
         Notify.show(message);
         if (callback != null) callback.run();
     }
 
-    /** 返回给用户看的一句话结果。 */
+    // ---------------------------------------------------------------- 建站流水线（§12.3）
+
+    /**
+     * 四步建站：探测（本机，不耗 AI）→ 写源（AI）→ 自检（本机）→ 落盘注册。
+     *
+     * <p>自检不通过会把失败原因连同上一版源码回灌给 AI 修一轮；仍不通过就明确报「做不出来」，
+     * 此时只留一个可被下次覆盖的源码文件，注册表保持不变，用户看到的站点列表不变。
+     */
     private String recognize(final String target) {
-        if (AiSite.looksLikeApi(target)) return addOne(probeSite(target));
-        String html = fetch(target);
-        JSONObject homepage = AiSite.fromHomepageHtml(target, html);
-        if (homepage != null) return addOne(homepage);
+        if (AiSite.looksLikeApi(target)) return done(addOne(probeSite(target)));
+
+        status(R.string.ai_site_step_probe);
+        AiSiteProbe.Result probe = AiSiteProbe.probe(target);
+        if (probe == null) return ResUtil.getString(R.string.ai_site_add_fail, "");
+        JSONObject shortcut = AiSite.fromHomepageHtml(target, probe.homeBody());
+        if (shortcut != null) return done(addOne(shortcut));
+        if (!probe.ok()) return ResUtil.getString(R.string.ai_site_probe_fail, probe.getError());
         if (!AiSiteSetting.canUseAi()) return ResUtil.getString(R.string.ai_site_need_ai);
-        JSONObject result = AiSiteClient.detect(target, html, AiSiteSetting.getUrl(), AiSiteSetting.getKey(), AiSiteSetting.getModel());
-        if (!result.optBoolean("ok")) {
-            String error = result.optString("error", "").trim();
-            return error.isEmpty() ? ResUtil.getString(R.string.ai_site_need_ai) : error;
+
+        String samples = AiSiteProbe.toPrompt(probe);
+        String url = AiSiteSetting.getUrl();
+        String key = AiSiteSetting.getKey();
+        String model = AiSiteSetting.getModel();
+
+        status(R.string.ai_site_step_write);
+        JSONObject written = AiSiteClient.writeSpider(target, samples, url, key, model);
+        if (!written.optBoolean("ok")) return ResUtil.getString(R.string.ai_site_source_fail, written.optString("error"));
+
+        String host = hostName(target);
+        String id = AiSite.idOf("spider://" + host);
+        String api = stage(id, written, 1);
+        if (api.isEmpty()) return ResUtil.getString(R.string.ai_site_source_fail, "");
+
+        status(R.string.ai_site_step_check);
+        JSONObject tested = AiSiteSelfTest.verify(id, api, "{}", "", probe.isSearchable());
+        if (!tested.optBoolean("ok")) {
+            status(R.string.ai_site_step_repair);
+            JSONObject repaired = AiSiteClient.writeSpider(target, samples, url, key, model,
+                    written.optString("source"), tested.optString("step") + "：" + tested.optString("error"));
+            if (!repaired.optBoolean("ok")) return ResUtil.getString(R.string.ai_site_source_fail, repaired.optString("error"));
+            String again = stage(id, repaired, 2);
+            if (again.isEmpty()) return ResUtil.getString(R.string.ai_site_source_fail, "");
+            tested = AiSiteSelfTest.verify(id + "#2", again, "{}", "", probe.isSearchable());
+            if (!tested.optBoolean("ok")) {
+                return ResUtil.getString(R.string.ai_site_source_fail, tested.optString("step") + "：" + tested.optString("error"));
+            }
+            written = repaired;
+            api = again;
         }
-        return addOne(result);
+
+        JSONObject site = new JSONObject();
+        try {
+            site.put("id", id);
+            site.put("name", host);
+            site.put("api", api);
+            site.put("type", AiSite.TYPE_SPIDER);
+            site.put("searchable", probe.isSearchable() ? 1 : 0);
+        } catch (Throwable e) {
+            return ResUtil.getString(R.string.ai_site_source_fail, "");
+        }
+        String error = addOne(site);
+        return error.isEmpty() ? ResUtil.getString(R.string.ai_site_source_ok, written.optString("lang")) : error;
     }
 
+    /**
+     * 落一个候选源码文件，返回它的本地接口地址；失败返回空串。
+     *
+     * <p>修正轮必须换文件名：加载器按站点 key 缓存 Spider，QuickJS 也按 URL 缓存模块正文，
+     * 沿用同一地址会把上一版坏源码喂回自检。
+     */
+    private String stage(final String id, final JSONObject written, final int attempt) {
+        String lang = AiSiteClient.LANG_JS.equals(written.optString("lang")) ? AiSiteClient.LANG_JS : AiSiteClient.LANG_PY;
+        String name = attempt <= 1 ? "spider." + lang : "spider-" + attempt + "." + lang;
+        return AiSite.stageSource(id, name, written.optString("source"));
+    }
     private JSONObject probeSite(final String api) {
         try {
             JSONObject site = new JSONObject();
@@ -261,20 +325,30 @@ public class AiSiteDialog extends BaseAlertDialog {
         }
     }
 
+    /** 在界面上留一行进度/结果。 */
+    private void status(final int res) {
+        status(ResUtil.getString(res));
+    }
+
+    private void status(final String text) {
+        App.post(() -> {
+            if (binding == null) return;
+            binding.status.setText(text);
+            binding.status.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
+        });
+    }
+
     private String addOne(final JSONObject site) {
         if (site == null) return ResUtil.getString(R.string.ai_site_add_fail, "");
         String error = AiSite.addSite(App.get(), site);
-        if (error.isEmpty()) added = true;
-        return error.isEmpty() ? ResUtil.getString(R.string.ai_site_added_ok) : ResUtil.getString(R.string.ai_site_add_fail, error);
+        if (!error.isEmpty()) return ResUtil.getString(R.string.ai_site_add_fail, error);
+        added = true;
+        return "";
     }
 
-    private String fetch(final String url) {
-        try {
-            String body = OkHttp.string(url, FETCH_TIMEOUT);
-            return body == null ? "" : body;
-        } catch (Throwable e) {
-            return "";
-        }
+    /** 把 {@link #addOne} 的结果补成一句可直接展示的文案。 */
+    private String done(final String error) {
+        return error.isEmpty() ? ResUtil.getString(R.string.ai_site_added_ok) : error;
     }
 
     private static String textOf(final TextView view) {

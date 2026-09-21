@@ -416,6 +416,15 @@
 3. **自检（设备端，规范 §12 落地）**：按 §12.6 真实加载并跑一遍；失败则把错误回灌 LLM 修 1 轮；仍失败**明确报「这个站做不出来」并且不落盘**（保持诚实性底线）。
 4. **落盘 + 注入**：按 §12.2。
 
+**实现口径（`AiSiteDialog.recognize`，S6-r2e 定案）**：
+
+- 第 3 步要先有文件才能按生产路径加载，所以顺序是「**先落候选文件 → 自检 → 通过后才写注册表**」：`AiSite.stageSource(id, name, source)` 只写 `CustomCspSetting.file(id, name)`，不碰注册表；自检不过时注册表保持原样，用户看到的站点列表不变（候选文件会被同 id 的下一次识别覆盖）。
+- **修正轮必须换文件名与站点 key**：`PyLoader`/`JsLoader` 按站点 key 缓存 Spider（`spiders.computeIfAbsent(key, ...)`），QuickJS `Module.fetch` 还按 URL 缓存模块正文。沿用同一 key/URL 会把上一版坏源码喂回自检。故第 1 轮用 key=`id`、文件名 `spider.<lang>`，修正轮用 key=`id#2`、文件名 `spider-2.<lang>`，最终条目存修正轮的地址。
+- **探测命中 maccms 捷径就直接加 type 1**，不进 AI 与自检（用探测阶段同一份首页 HTML，不重复请求）。
+- 无搜索能力的站点（`AiSiteProbe.Result.isSearchable() == false`）入注册表时 `searchable = 0`，自检第 6 项记「不适用」。
+- 建站要求文件访问权限（源码落在外部存储的自定义源目录），未授权时提示 `setting_custom_csp_permission_required` 而不进入流水线。
+- 进度与结果落在对话框新增的 `status` 行（探测中 → 写源中 → 自检中 → 修正中 → 结果）；四步文案三语同步。
+
 ### 12.4 探测样本规格
 
 | 样本 | 取法 | 记录内容 |
@@ -505,5 +514,5 @@
 | S6-r2b | 探针：`AiSiteProbe`（首页/分类/详情/播放/搜索 + SPA 抓 JS） | **已完成**（`AiSiteProbe.java`；请求预算 7 次含 1 次播放地址确认；本地 HttpServer 端到端 25 断言全过，r2a 回归 49 断言全过） |
 | S6-r2c | 写源：`AiSiteClient.writeSpider(targetUrl, samples, apiUrl, key, model)` + system 契约注入 + 语言标记解析 | **已完成**（`writeSpider`/`parseSpider`/`guessLang`/`spiderSystemPrompt`/`spiderUserPrompt`/`buildSpiderPayload`/`buildSpiderRetryPayload`；纯文本模式不再发 `response_format`；本地 mock AI 端点端到端 41 断言全过，含「首轮不合格→回灌重试 1 轮→仍不合格判失败」与「Key 不进请求体」） |
 | S6-r2d | 自检：`AiSiteSelfTest`（`BaseLoader.get().getSpider` 同路径加载并跑 §12.6 契约） | **已完成**（`AiSiteSelfTest.verify(key,api,ext,jar,searchable)` / `check(Spider,searchable)`；加载失败与 `SpiderNull` 均判失败；5 步契约逐步留痕；本地替身 Spider 39 断言全过） |
-| S6-r2e | `AiSiteDialog` 串联四步 + 进度/失败提示 + i18n | 待开始 |
+| S6-r2e | `AiSiteDialog` 串联四步 + 进度/失败提示 + i18n | **已完成**（`recognize` 走探测→写源→落候选文件→自检→（失败回灌修 1 轮）→注册表落盘；`AiSite.stageSource` 只写文件不动注册表；`addSite` 支持显式 `id` 与 `searchable`；对话框新增 `status` 行；四步文案三语同步；本地 harness 28 断言全过，r2a/r2b/r2c/r2d 回归全过） |
 | S6-r2f | 版本 1.0.64 → CI → 下载校验 → 上传 → 真机复验 | 待开始 |

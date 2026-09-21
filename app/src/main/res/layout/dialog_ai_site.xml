@@ -80,6 +80,15 @@
                 app:backgroundTint="@color/dialog_tonal_button_bg" />
 
             <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="#5F6368"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/aiHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

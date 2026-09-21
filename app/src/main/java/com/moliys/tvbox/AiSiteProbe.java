@@ -161,6 +161,23 @@ public final class AiSiteProbe {
         public String getSearchTemplate() {
             return searchTemplate;
         }
+
+        /** 是否探测到站内搜索：自检契约第 6 项据此决定「跑」还是记「不适用」。 */
+        public boolean isSearchable() {
+            if (!searchTemplate.isEmpty()) return true;
+            for (Sample sample : samples) {
+                if (ROLE_SEARCH.equals(sample.getRole())) return true;
+            }
+            return false;
+        }
+
+        /** 首页正文；未抓到首页时为空串。供「能直接命中 maccms 接口」的捷径复用同一份 HTML。 */
+        public String homeBody() {
+            for (Sample sample : samples) {
+                if (ROLE_HOME.equals(sample.getRole())) return sample.getBody();
+            }
+            return "";
+        }
     }
 
     // ---------------------------------------------------------------- 主流程

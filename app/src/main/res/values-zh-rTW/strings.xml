@@ -581,6 +581,13 @@
     <string name="ai_site_delete_fail">刪除失敗</string>
     <string name="ai_site_saved">AI 設定已儲存</string>
     <string name="ai_site_invalid_key">請填寫有效的 AI 介面地址和 Key</string>
+    <string name="ai_site_step_probe">正在探測網站…</string>
+    <string name="ai_site_step_write">正在讓 AI 寫源…</string>
+    <string name="ai_site_step_check">正在自檢產生的源…</string>
+    <string name="ai_site_step_repair">自檢未通過，正在讓 AI 修正…</string>
+    <string name="ai_site_probe_fail">探測失敗：%1$s</string>
+    <string name="ai_site_source_ok">已產生源（%1$s），自檢通過</string>
+    <string name="ai_site_source_fail">做不出來：%1$s</string>
     <string name="setting_custom_csp_add">新增</string>
     <string name="setting_custom_csp_insert_short">位置</string>
     <string name="setting_custom_csp_recognize">識別</string>

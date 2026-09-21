@@ -583,6 +583,13 @@
     <string name="ai_site_delete_fail">Delete failed</string>
     <string name="ai_site_saved">AI settings saved</string>
     <string name="ai_site_invalid_key">Fill in a valid AI address and Key</string>
+    <string name="ai_site_step_probe">Probing the site…</string>
+    <string name="ai_site_step_write">Asking AI to write the source…</string>
+    <string name="ai_site_step_check">Self-checking the generated source…</string>
+    <string name="ai_site_step_repair">Self-check failed; asking AI to fix it…</string>
+    <string name="ai_site_probe_fail">Probe failed: %1$s</string>
+    <string name="ai_site_source_ok">Source generated (%1$s), self-check passed</string>
+    <string name="ai_site_source_fail">Cannot build this site: %1$s</string>
     <string name="setting_custom_csp_add">Add</string>
     <string name="setting_custom_csp_insert_short">Pos</string>
     <string name="setting_custom_csp_recognize">Detect</string>

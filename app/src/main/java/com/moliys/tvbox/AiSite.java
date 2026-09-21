@@ -6,6 +6,7 @@ import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.setting.CustomCspSetting;
 import com.github.catvod.net.OkHttp;
+import com.github.catvod.utils.Path;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -282,7 +283,8 @@ public final class AiSite {
         if (!error.isEmpty()) return error;
         try {
             String api = normalize(site.optString("api", ""));
-            String id = idOf(api);
+            String requested = site.optString("id", "").trim();
+            final String id = requested.isEmpty() ? idOf(api) : requested;
             CustomCspSetting.Registry registry = CustomCspSetting.load();
             List<CustomCspSetting.Item> items = new ArrayList<>(registry.getItems());
             items.removeIf(item -> item != null && id.equals(item.getId()));
@@ -304,9 +306,28 @@ public final class AiSite {
         item.setType(site.optInt("type", TYPE_WEB));
         item.setApi(api);
         item.setWebHome(false);
-        item.setSearchable(1);
+        item.setSearchable(site.has("searchable") ? Math.max(0, Math.min(1, site.optInt("searchable", 1))) : 1);
         item.setEnabled(true);
         return item;
+    }
+
+    /**
+     * 把写好的源码先落到自定义源目录，供自检按生产路径加载。
+     *
+     * <p>只写文件、<b>不动注册表</b>：自检不通过时注册表保持原样，用户看见的站点列表不变；
+     * 同一 id 重复识别会覆盖同一文件，不会堆孤儿。注册表下次保存时也会清掉未登记的目录。
+     *
+     * @return 供站点使用的本地接口地址（{@code file://.../<name>}）；失败返回空串
+     */
+    public static String stageSource(final String id, final String name, final String source) {
+        if (id == null || id.trim().isEmpty() || name == null || name.trim().isEmpty()) return "";
+        if (source == null || source.trim().isEmpty()) return "";
+        try {
+            Path.write(CustomCspSetting.file(id.trim(), name.trim()), source.getBytes(StandardCharsets.UTF_8));
+            return CustomCspSetting.localUrl(id.trim(), name.trim());
+        } catch (Throwable e) {
+            return "";
+        }
     }
 
     /** 按条目 id 删除站点；注册表保存时会一并清理该条目的文件目录。 */

@@ -422,6 +422,17 @@ public final class AiSiteClient {
      */
     public static JSONObject writeSpider(final String targetUrl, final String samples, final String apiUrl,
                                          final String key, final String model) {
+        return writeSpider(targetUrl, samples, apiUrl, key, model, "", "");
+    }
+
+    /**
+     * 带回灌上下文再写一次：把上一版源码与设备端自检的失败原因一起发给模型（§12.3 第 ③ 步的修正轮）。
+     *
+     * @param previous 上一版源码；为空时等价于 {@link #writeSpider(String, String, String, String, String)}
+     * @param reason   自检或加载给出的失败原因
+     */
+    public static JSONObject writeSpider(final String targetUrl, final String samples, final String apiUrl,
+                                         final String key, final String model, final String previous, final String reason) {
         if (!AiSite.isHttpUrl(apiUrl)) return failure("AI 接口地址无效");
         if (key == null || key.trim().isEmpty()) return failure("请先填写 AI Key");
         if (!AiSite.isHttpUrl(targetUrl)) return failure("目标网站地址无效");
@@ -431,7 +442,7 @@ public final class AiSiteClient {
         String lastError = "";
         String payload;
         try {
-            payload = buildSpiderPayload(model, targetUrl, samples).toString();
+            payload = seedPayload(model, targetUrl, samples, previous, reason);
         } catch (Throwable e) {
             return failure("请求构造失败");
         }
@@ -462,6 +473,16 @@ public final class AiSiteClient {
             }
         }
         return failure(lastError);
+    }
+
+    /** 首轮请求体：有回灌上下文时用「上一版源码 + 失败原因」，否则用干净的写源提示词。 */
+    private static String seedPayload(final String model, final String targetUrl, final String samples,
+                                     final String previous, final String reason) throws Exception {
+        if (previous != null && !previous.trim().isEmpty()) {
+            String text = reason == null ? "" : reason.trim();
+            return buildSpiderRetryPayload(model, targetUrl, samples, previous, text.isEmpty() ? "上一版没有通过自检" : text).toString();
+        }
+        return buildSpiderPayload(model, targetUrl, samples).toString();
     }
 
     /** 剥离围栏与首行语言标记，并校验产物确实是 Spider 源。 */
