@@ -424,7 +424,7 @@
 | 分类列表页 | 从首页取 1~2 个疑似分类链接 | 同上；用于推导列表项选择器与翻页规则 |
 | 详情页 | 从列表页取第 1 个影片链接 | 同上；用于推导 `vod_play_url` 结构 |
 | 播放页 | 从详情页取第 1 个播放链接 | 页面 HTML + 请求到的 m3u8/mp4 地址（**用于确认链路真实可达**） |
-| 搜索页 | 用固定词（如「电影」）请求站内搜索 | 搜索 URL 模板 + 结果 HTML（用于写 `searchContent`） |
+| 搜索页 | 用固定词（如「电影」）请求站内搜索；模板由首页表单/搜索链接推导，推不出则记为「不适用」 | 绝对形式的搜索 URL 模板（如 `http://host/search.php?wd={wd}`）+ 结果 HTML（用于写 `searchContent`） |
 | SPA 补充 | 首页含 `<script src>` 且正文空时 | 抓取 JS 文件文本，提取其中的 API 端点与字段名 |
 
 约束：单样本正文截断 100 KB（沿用 D6）；每个样本记录 `URL` + `角色` + `正文`；总预算 ≤ 6 个请求 + 1 次播放地址请求。
@@ -494,7 +494,7 @@
 | 阶段 | 内容 | 状态 |
 |---|---|---|
 | S6-r2a | 落盘/注入改造：`AiSite` 改用 `CustomCspSetting` 注册表，删除 `activate()`/`configUri()`/分组配置 | **已完成**（本地 harness 49 断言全过；`reloadConfigs()` 重载当前配置而非切换配置；maccms 捷径保留可用） |
-| S6-r2b | 探针：`AiSiteProbe`（首页/分类/详情/播放/搜索 + SPA 抓 JS） | 待开始 |
+| S6-r2b | 探针：`AiSiteProbe`（首页/分类/详情/播放/搜索 + SPA 抓 JS） | **已完成**（`AiSiteProbe.java`；请求预算 7 次含 1 次播放地址确认；本地 HttpServer 端到端 25 断言全过，r2a 回归 49 断言全过） |
 | S6-r2c | 写源：`AiSiteClient.writeSpider(samples)` + system 契约注入 + 语言标记解析 | 待开始 |
 | S6-r2d | 自检：`AiSiteSelfTest`（`BaseLoader.get().getSpider` 同路径加载并跑 §12.6 契约） | 待开始 |
 | S6-r2e | `AiSiteDialog` 串联四步 + 进度/失败提示 + i18n | 待开始 |
