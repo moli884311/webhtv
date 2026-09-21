@@ -837,7 +837,11 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 
 ### 交付记录（1.0.64）
 
-- 代码提交：`692f96f2`、`a5ed6777`、`82b401af`、`21adcac2`、`6a2bdd08`、本节（升版本 1.0.64 / code 65）
+- 代码提交：`692f96f2`、`a5ed6777`、`82b401af`、`21adcac2`、`6a2bdd08`、`80856af8`（升版本 1.0.64 / code 65）、`cb7ecba7`（修 CI 编译失败）
+- **编译失败与修复**：首次 CI（run `35558329768`）在 `AiSiteSelfTest` 报 14 处 `unreported exception JSONException` —— 自检结果的四个构造辅助方法直接 `json.put(...)`，而真机/CI 上 `org.json.JSONException` 是受检异常。改为统一走 `put(json,key,value)` 兜底（`catch (Throwable)` 吞掉），提交 `cb7ecba7`；CI run `35559451141` success。
+  - 本地此前漏检的原因：用 `android.jar` 单独编译时报了「类名与文件名不符」这类错误，javac 因此跳过了流分析；同时另一路检查把 `org-json.jar` 排在前面，而那份 `JSONException` 继承 `RuntimeException`，受检异常检查被静默绕过。两点已记入 `.monkeycode/MEMORY.md`。
 - 恢复标签：`recovery/F1-autosite-r2a/20260921104623-692f96f29233`、`recovery/F1-autosite-r2b/20260921105536-a5ed677782d4`、`recovery/F1-autosite-r2c/20260921110050-82b401afb346`、`recovery/F1-autosite-r2d/20260921111312-21adcac20535`、`recovery/F1-autosite-r2e/20260921113547-6a2bdd08e526`
 - 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
+- 交付记录：CI run `35559451141` success；产物 package `com.fongmi.android.tvceshi` / versionCode `65` / versionName `1.0.64`，minSdk 24 / targetSdk 28，SHA256 `673f80db1bae4ad7b01a2b152636ca495f442ba4e359781ac474a1db7bf005db`（141419871 字节），已上传 `https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.64.apk`（HTTP 206）
+- 恢复标签：`recovery/F1-autosite-r2f/20260921113953-80856af85b31`、`recovery/F1-autosite-r2f-fix1/20260921120018-cb7ecba754f6`
 - 待办：真机验收「随便一个影视站 → 生成可跑源」全链路（探测样本→写源→自检→落盘→进站可播）；验收通过后按 §8 S6 复制 F1 到其余 5 个版本
