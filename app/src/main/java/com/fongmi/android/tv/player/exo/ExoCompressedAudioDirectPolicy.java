@@ -21,6 +21,7 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink;
 import androidx.media3.exoplayer.audio.ForwardingAudioOutput;
 import androidx.media3.exoplayer.audio.ForwardingAudioOutputProvider;
 
+import com.fongmi.android.tv.setting.ExoPerformanceSetting;
 import com.github.catvod.crawler.SpiderDebug;
 
 import java.nio.ByteBuffer;
@@ -85,7 +86,10 @@ public final class ExoCompressedAudioDirectPolicy
                 OutputKey key = OutputKey.from(config.format);
                 // Tunneling is a shared audio/video contract. This vendor-only output cannot
                 // supply HW_AV_SYNC timestamps, so let Media3 choose a standard output/decoder.
-                if (config.enableTunneling || key == null || !supportsEncodedFrames(key.encoding())) {
+                // 压缩音频直通默认关闭（见 ExoPerformanceSetting.isAudioDirect）：该分支是给个别
+                // 厂商 HAL 的兼容写法，在非目标机型上会卡顿或播放中途丢声。
+                if (config.enableTunneling || key == null || !supportsEncodedFrames(key.encoding())
+                        || !ExoPerformanceSetting.isAudioDirect()) {
                     if (key != null) vendorDirectConfigs.remove(key);
                     return standard;
                 }
