@@ -1,8 +1,8 @@
 package com.moliys.tvbox;
 
 public final class Version {
-    public static final int CODE = 65;
-    public static final String NAME = "1.0.64";
+    public static final int CODE = 66;
+    public static final String NAME = "1.0.65";
 
     private Version() {
     }
