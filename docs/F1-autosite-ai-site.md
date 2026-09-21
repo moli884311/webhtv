@@ -239,6 +239,7 @@
 - **AI Key 由用户自己填**，仅存 `Prefers`，**不硬编码、不读环境变量、不写日志、不写进站点配置文件**。
 - **知情同意**：AI 识别会把目标站的页面内容发给用户指定的第三方模型服务。首次使用前必须显式勾选「我已知晓并同意」，状态存 `Prefers`，未同意则 `AI识别` 按钮不可用。
 - 送出去的 HTML 需清洗：去 `<script>`/`<style>`、去注释、压缩空白、**截断到 100 KB**。
+- **已知风险（2026-09-21 评估，决定不在 F1 内修）**：全 app 共用的 `OkHttp.getBuilder()`（`catvod/src/main/java/com/github/catvod/net/OkHttp.java:238`）设了 `hostnameVerifier((hostname, session) -> true)` 与 `trustAllCertificates()`，即**不校验 TLS 证书**。因此本功能发出的 AI Key 在主动中间人环境下可被读取，`redact()` 只能保证它不进错误文案。**决定不修**，理由三条：①trust-all 是该 fork 为加载任意第三方采集源而做的既有**全局**决策，改动全局会砸产品，属独立任务；②AI Key 与 `AuthInterceptor` 下其它凭据暴露面完全相同，单给这一路加校验收益低且不一致；③单独 client 若想保留用户已配置的代理，须沿用 `OkHttp.client()` 再 `newBuilder()` 覆盖 TLS，而重置 `hostnameVerifier` 需自建 `TrustManager` 并碰 okhttp internal API（脆弱），不复用则代理用户会调不通（真实回归）。**正确的修法是「全局可校验 TLS + 对坏证书源留显式开关」**，需单独设计评审与用户批准，不在 F1 范围。
 
 ### D7. 探测优先的具体判定（不调 LLM 的快速路径）
 
