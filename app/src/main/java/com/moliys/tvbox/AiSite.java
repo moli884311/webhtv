@@ -147,6 +147,69 @@ public final class AiSite {
         return !hostOf(text).isEmpty();
     }
 
+    // ---------------------------------------------------------------- 探测优先编排（D7）
+
+    /** D7 步骤 1：输入本身就像采集接口（含 {@code provide/vod}、含 {@code ac=}、或以 {@code .php} 结尾且含 api）。 */
+    public static boolean looksLikeApi(final String url) {
+        String text = normalize(url).toLowerCase(Locale.ROOT);
+        if (text.isEmpty()) return false;
+        if (text.contains("provide/vod")) return true;
+        if (text.contains("ac=")) return true;
+        return pathOf(text).endsWith(".php") && text.contains("api");
+    }
+
+    /** D7 步骤 2：从站点首页 HTML 里直接找出采集接口；命中返回站点 JSON，未命中返回 null。不发起网络请求。 */
+    public static JSONObject fromHomepageHtml(final String baseUrl, final String html) {
+        if (html == null || html.isEmpty()) return null;
+        try {
+            String api = findApiInHtml(html);
+            if (api.isEmpty()) {
+                String path = findApiPathInHtml(html);
+                if (path.startsWith("//")) path = schemeOf(baseUrl) + ":" + path;
+                api = path.isEmpty() ? "" : resolve(baseUrl, path);
+            }
+            if (!isHttpUrl(api)) return null;
+            JSONObject site = new JSONObject();
+            site.put("name", hostOf(baseUrl));
+            site.put("api", normalize(api));
+            site.put("type", TYPE_JSON);
+            site.put("source", "probe");
+            return site;
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
+    /** D7 步骤 3：输入本身是完整站点配置（形如 {@code {"sites":[...]}}）时取出其中的站点数组，否则返回 null。 */
+    public static JSONArray parseConfigText(final String text) {
+        String trimmed = text == null ? "" : text.trim();
+        if (!trimmed.startsWith("{")) return null;
+        try {
+            JSONArray sites = new JSONObject(trimmed).optJSONArray("sites");
+            return sites == null || sites.length() == 0 ? null : sites;
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
+    private static String pathOf(final String url) {
+        try {
+            String path = new URI(url).getPath();
+            return path == null ? "" : path;
+        } catch (Throwable e) {
+            return "";
+        }
+    }
+
+    private static String schemeOf(final String url) {
+        try {
+            String scheme = new URI(normalize(url)).getScheme();
+            return scheme == null ? "http" : scheme.toLowerCase(Locale.ROOT);
+        } catch (Throwable e) {
+            return "http";
+        }
+    }
+
     // ---------------------------------------------------------------- 结构校验
 
     /** 站点结构校验；通过返回空串，不通过返回可读原因。不发起任何网络请求。 */
