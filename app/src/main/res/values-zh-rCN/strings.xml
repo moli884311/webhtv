@@ -556,6 +556,31 @@
     <string name="setting_shell_proxy">Proxy</string>
     <string name="setting_shell_proxy_config">Proxy</string>
     <string name="setting_custom_csp">站点注入</string>
+
+    <!-- AI 自动站点 -->
+    <string name="setting_ai_site">AI 自动站点</string>
+    <string name="setting_ai_site_count">已添加 %1$d 个站点</string>
+    <string name="setting_ai_site_none">未添加</string>
+    <string name="ai_site_target_hint">网站地址或接口地址</string>
+    <string name="ai_site_recognize">识别</string>
+    <string name="ai_site_ai_hint">优先自动探测，探测不到时才调用 AI。</string>
+    <string name="ai_site_ai_url_hint">AI 接口地址</string>
+    <string name="ai_site_ai_key_hint">AI Key</string>
+    <string name="ai_site_ai_model_hint">模型名</string>
+    <string name="ai_site_consent">识别会把目标网页内容发送给你配置的 AI 服务，我已知晓并同意</string>
+    <string name="ai_site_added">已添加站点</string>
+    <string name="ai_site_empty">还没有添加站点</string>
+    <string name="ai_site_need_url">请先填写网站地址</string>
+    <string name="ai_site_need_consent">请先勾选知情同意</string>
+    <string name="ai_site_need_ai">需要配置 AI 才能识别该站</string>
+    <string name="ai_site_running">正在识别…</string>
+    <string name="ai_site_added_ok">站点已添加</string>
+    <string name="ai_site_add_fail">添加失败：%1$s</string>
+    <string name="ai_site_imported">已导入 %1$d 个站点</string>
+    <string name="ai_site_deleted">站点已删除</string>
+    <string name="ai_site_delete_fail">删除失败</string>
+    <string name="ai_site_saved">AI 设置已保存</string>
+    <string name="ai_site_invalid_key">请填写有效的 AI 接口地址和 Key</string>
     <string name="setting_custom_csp_add">新增</string>
     <string name="setting_custom_csp_insert_short">位置</string>
     <string name="setting_custom_csp_recognize">识别</string>
