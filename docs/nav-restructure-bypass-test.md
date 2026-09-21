@@ -872,8 +872,12 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - `AiSiteDialog` 编辑前后 `javac` 错误直方图完全一致（仅缺 androidx/`R` 符号），无新增语法级错误。
 - 原生编译由 fork CI 验证；真机验收在本版进行。
 
-### 交付记录（1.0.65，待打包）
+### 交付记录（1.0.65）
 
-- 改动文件：`AiSiteProgress.java`（新增）、`AiSiteProbe.java`、`AiSiteClient.java`、`AiSiteSelfTest.java`、`AiSiteDialog.java` 与本文档；未改 site-src，站点版本维持 3.0.40。
-- 待办：升版本 1.0.65 / code 66 → fork CI → 下载校验 → 上传 → 真机复验「多 UA 下能建站」与「进度实时可见」。
+- 代码提交：`7dce9866`（实时进度 + 多 UA 重试与脚本补采）、`2da6096c`（升版本 1.0.65 / code 66，3 文件）
+- 恢复标签：`recovery/f1-autosite-progress-ua/20260921200329-7dce98660c55`、`recovery/f1-autosite-v1065/20260921200425-2da6096c817f`
+- 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
+- 本版同时带上了上一提交 `dbe3d400` 的 Exo 音频直通默认关闭修复（详见当前工作区 内的 `docs/exo-compressed-audio-direct-fix.md`）
+- 交付记录：CI run `35597459641` success；产物 package `com.fongmi.android.tvceshi` / versionCode `66` / versionName `1.0.65`，minSdk 24 / targetSdk 28，SHA256 `d62984bf995e7c1ed03160f11d46279c69ae055aedb595c7dfceb1441a0254b7`（141419871 字节），已上传 `https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.65.apk`（HTTP 206）
+- 待办（真机验收）：①Exo 播放不再卡顿、不中途丢声（IJK 作为对照）②普通影视站建站：换 UA 后能抓到结构、进度条实时可见、能写出可跑源并进站播放 ③验收通过后按 §8 S6 复制 F1 到其余 5 个版本
 - 已知风险（受跟踪，未处理）：三层进度文案目前是硬编码简体中文，与 F1 既有运行时错误文案口径一致，英文/繁体界面下会显示简体。
