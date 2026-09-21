@@ -784,3 +784,60 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - 上传：`https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.62.apk`（HTTP 206，远端 141399863 字节）
 - 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
 - 待办：真机验收 D7 四个分支（像接口的输入直接建站、首页 HTML 探测、完整 JSON 配置导入、需 AI 时提示先配置）与站点增删；验收通过后按 §8 S6 复制到其余 5 个版本
+
+## 28. F1 三缺陷修复（1.0.63）
+
+1.0.62 真机使用中暴露出三个问题，本版做定点修复，不改功能范围。
+
+- **裸域 AI 地址**：用户常只填服务根地址（如 `https://api.deepseek.com`），请求会打到不存在的路径上。改为按后缀补全成 `chat/completions` 端点（已带 `/v1` 补 `/chat/completions`，已带端点则原样）。
+- **失败看不清原因**：HTTP 报错只给状态码，看不出是哪一步失败。`HttpError` 现在携带请求 URL 与响应体摘要；同时 `message(role, content)` 统一请求体构造，去掉整段 JSON 导入分支遗留的重复逻辑。
+- **对话框新增站点后不生效**：识别成功后没有重载配置，影视主页看不到新站。`AiSiteDialog` 的 `changed` 字段改名 `added` 并只在真的新增时才 `reloadConfigs()`，删除源同样触发重载。
+
+交付记录（1.0.63）：代码提交 `f81ef270`（三缺陷修复）、`63a77c63`（升版本 1.0.63 / code 64，3 文件）；验证 harness 38 断言全过；fork CI run `35551439152` success；产物 package `com.fongmi.android.tvceshi` / versionCode `64` / versionName `1.0.63`，SHA256 `429468e8fb370c8c965a490fbcfa7de68daa49405b5d1b20a8bf5781acebaadc`（141399699 字节），已上传 `https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.63.apk`。
+
+**本版方向随后被用户纠正**：AI 只是「从 HTML 里挑一个现成接口」，对没有 maccms 接口的站无能为力。修订方向见 §29。
+
+## 29. F1 方向修正：真·写源流水线（1.0.64）
+
+用户指出 1.0.62/1.0.63 的识别思路不成立：**AI 应该读全站样本后写出一个可执行的爬虫源**，而不是在页面里找一个现成接口。目标站没有 `api.php/provide/vod` 时也要能建站。设计修订与全部决策见当前工作区 内的 `docs/F1-autosite-ai-site.md` §12。
+
+### 修订要点
+
+- **加站语义**：新站以壳子既有「自定义源」条目（`CustomCspSetting` 的 `Item`）落盘，在配置加载时注入**当前配置的站点列表**，原源（如 饭太硬）与排序不变；不再切到独立分组，也不再切换用户当前接口配置。
+- **产物形态**：一个**本地源码文件**（`.py` 或 `.js`），由壳子自带 `/file/` 路由提供给加载器；`.py` 走 Chaquopy，`.js` 走 QuickJS，二者能力都在壳子里，无需新增运行时。
+- **生成语言由 AI 自行判断**，界面不提供语言开关；要求模型在源码首行写 `#!lang=py` 或 `//!lang=js`，解析层据此定扩展名并剥离该行。
+- **四步流水线**：①设备端探测（首页/分类/详情/播放/搜索 6 页 + 1 次播放地址确认，不耗 AI 额度）②AI 写源（单文件全文，不再用 `response_format`）③设备端按**生产同路径**加载并跑自检契约 ④通过后写注册表并重载。
+- **诚实性底线**：自检不通过会把失败原因连同上一版源码回灌给 AI 修 1 轮；仍不通过就明确报「这个站做不出来」并且**不写注册表**，用户看到的站点列表保持原样。
+- **保留捷径**：目标站自带苹果CMS JSON 接口时仍直接加为 type 1 站点，跳过 AI 与自检。
+
+### 实现阶段
+
+| 阶段 | 内容 | 提交 |
+|---|---|---|
+| S6-r2a | `AiSite` 改走自定义源注册表（删分组配置/`activate`），`AiSiteDialog` 跟着调整 | `692f96f2` |
+| S6-r2b | 新增 `AiSiteProbe` 探测阶段 | `a5ed6777` |
+| S6-r2c | `AiSiteClient.writeSpider` 写源（提示词契约、语言标记、失败回灌） | `82b401af` |
+| S6-r2d | 新增 `AiSiteSelfTest` 设备端自检（5 步契约） | `21adcac2` |
+| S6-r2e | 对话框串联四步 + 进度/失败提示 + 三语文案 | `6a2bdd08` |
+| S6-r2f | 升版本 1.0.64 / code 65 → fork CI → 下载校验 → 上传 → 真机复验 | 本节 |
+
+### 关键实现口径
+
+- **候选源码先落文件、注册表后写**：自检必须按生产路径加载，所以第 3 步先把候选源码写到 `CustomCspSetting.file(id, name)`（`AiSite.stageSource`，只写文件不动注册表），自检通过后才 `addSite` 写注册表；自检失败只留一个会被下次识别覆盖的候选文件，站点列表不变。
+- **修正轮换文件名与站点 key**：`PyLoader`/`JsLoader` 按站点 key 缓存 Spider，QuickJS 的 `Module.fetch` 还按 URL 缓存模块正文，沿用同一 key/URL 会把上一版坏源码喂回自检，所以第 1 轮用 `spider.<lang>` / key=`id`，修正轮用 `spider-2.<lang>` / key=`id#2`。
+- **文件访问权限前置**：源码落在外部存储的自定义源目录，未授权时直接提示 `setting_custom_csp_permission_required`，不进流水线。
+- **无搜索能力的站点**：探测未发现站内搜索时 `searchable=0`，自检第 6 项记「不适用」而不是判失败。
+
+### 校验
+
+- 本地 harness 累计 193 断言全过：r2a 49（注册表落盘/显式 id/搜索标记/候选文件只写不注册）、r2b 30（探测 6 页与 SPA 脚本、搜索模板、播放确认、`isSearchable`/`homeBody`）、r2c 47（对本地 mock AI 端点端到端：源码全文、语言标记与围栏解析、失败回灌重试、修正轮 4 条消息、Key 不进请求体、仍不发 `response_format`）、r2d 39（替身 Spider 跑 5 步自检的每个通过与失败分支、生产加载接线）、r2e 28（候选文件落盘与覆盖、显式 id、`searchable` 0/1、非 `.py`/`.js` 拒绝）。
+- 4 份 XML（对话框布局 + 三语 strings）良构；四步文案三语各 1 条。
+- `AiSiteDialog` 与 `com.moliys.tvbox` 包单文件 `javac` 语法检查无语法级错误（仅缺 androidx/AGP 依赖符号，属本地无 gradle 缓存的正常现象）。
+- 原生编译由 fork CI 验证（本地无 build-tools）；真机验收在本版进行。
+
+### 交付记录（1.0.64）
+
+- 代码提交：`692f96f2`、`a5ed6777`、`82b401af`、`21adcac2`、`6a2bdd08`、本节（升版本 1.0.64 / code 65）
+- 恢复标签：`recovery/F1-autosite-r2a/20260921104623-692f96f29233`、`recovery/F1-autosite-r2b/20260921105536-a5ed677782d4`、`recovery/F1-autosite-r2c/20260921110050-82b401afb346`、`recovery/F1-autosite-r2d/20260921111312-21adcac20535`、`recovery/F1-autosite-r2e/20260921113547-6a2bdd08e526`
+- 站点版本：未改 site-src，`SITE_VERSION` 与 `config.json` `site.version` 维持 3.0.40
+- 待办：真机验收「随便一个影视站 → 生成可跑源」全链路（探测样本→写源→自检→落盘→进站可播）；验收通过后按 §8 S6 复制 F1 到其余 5 个版本
