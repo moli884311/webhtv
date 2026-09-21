@@ -457,7 +457,7 @@
 | `AiSiteDialog.java` | **保留 UI**（设置页入口行 + 对话框）；**已删除** `AiSite.activate(...)` 切换逻辑；原 `changed` 字段改为 `added`（仅表示本次识别是否新增了站点，用于决定是否需要重载配置）；删除源与新增源后调用 `AiSite.reloadConfigs()` |
 | `AiSite.java` | **已删除** `activate()` / `configUri()` / 分组配置持久化（`moliys_ai_sites.json`）与 `siteKey` / `normalizeSite` / `mergeSite` / `dropSite` / `buildConfig`；改为 `CustomCspSetting` 注册表落盘（`loadSites`/`addSite`/`removeSite`/`countSites`/`reloadConfigs`）；保留 `normalize`/`hostOf`/`sha1`（供 `idOf`）与全部探测/校验逻辑 |
 | `AiSiteSetting.java` | 保留（AI 地址/模型/Key 读写） |
-| `AiSiteClient.java` | `endpoint()` 裸域补全与 `HttpError` 带 URL **保留**；新增 `writeSpider(samples, lang)`（返回源码文本）；`detect(...)` 的 JSON 解析保留供旧路径与回归使用 |
+| `AiSiteClient.java` | `endpoint()` 裸域补全与 `HttpError` 带 URL **保留**；**已新增** `writeSpider(targetUrl, samples, apiUrl, key, model)`（返回 `{"ok":true,"lang","source"}` / `{"ok":false,"error"}`）与 `parseSpider`/`guessLang`/`spiderSystemPrompt`/`spiderUserPrompt`/`buildSpiderPayload`/`buildSpiderRetryPayload`；`detect(...)` 的 JSON 解析保留供旧路径与回归使用 |
 | `AiSite S3a`（`looksLikeApi`/`fromHomepageHtml`） | 保留为「探测阶段的快速判定」（能直接命中 maccms JSON 时走 type 1 捷径，省一次 AI 调用），**但不再是唯一路径** |
 | `docs/F1-autosite-ai-site.md` D2/D3 | 已就地标注「被 §12 推翻」 |
 
@@ -495,7 +495,7 @@
 |---|---|---|
 | S6-r2a | 落盘/注入改造：`AiSite` 改用 `CustomCspSetting` 注册表，删除 `activate()`/`configUri()`/分组配置 | **已完成**（本地 harness 49 断言全过；`reloadConfigs()` 重载当前配置而非切换配置；maccms 捷径保留可用） |
 | S6-r2b | 探针：`AiSiteProbe`（首页/分类/详情/播放/搜索 + SPA 抓 JS） | **已完成**（`AiSiteProbe.java`；请求预算 7 次含 1 次播放地址确认；本地 HttpServer 端到端 25 断言全过，r2a 回归 49 断言全过） |
-| S6-r2c | 写源：`AiSiteClient.writeSpider(samples)` + system 契约注入 + 语言标记解析 | 待开始 |
+| S6-r2c | 写源：`AiSiteClient.writeSpider(targetUrl, samples, apiUrl, key, model)` + system 契约注入 + 语言标记解析 | **已完成**（`writeSpider`/`parseSpider`/`guessLang`/`spiderSystemPrompt`/`spiderUserPrompt`/`buildSpiderPayload`/`buildSpiderRetryPayload`；纯文本模式不再发 `response_format`；本地 mock AI 端点端到端 41 断言全过，含「首轮不合格→回灌重试 1 轮→仍不合格判失败」与「Key 不进请求体」） |
 | S6-r2d | 自检：`AiSiteSelfTest`（`BaseLoader.get().getSpider` 同路径加载并跑 §12.6 契约） | 待开始 |
 | S6-r2e | `AiSiteDialog` 串联四步 + 进度/失败提示 + i18n | 待开始 |
 | S6-r2f | 版本 1.0.64 → CI → 下载校验 → 上传 → 真机复验 | 待开始 |

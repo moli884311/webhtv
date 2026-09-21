@@ -22,9 +22,12 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 /**
- * F1/自动站点：调用用户自备的 OpenAI 兼容对话接口，从网页 HTML 里识别采集接口。
+ * F1/自动站点：调用用户自备的 OpenAI 兼容对话接口。
  *
- * <p>本类只做「取回一段 JSON」，不负责落盘；是否可用由 {@link AiSite#validateForAdd} 决定。
+ * <p>两件事：{@link #detect} 从网页 HTML 里识别现成的苹果CMS/XML 采集接口（走 response_format JSON 模式）；
+ * {@link #writeSpider} 按 {@link AiSiteProbe} 采到的样本写一个可执行的 Spider 源（纯文本模式，产物是源码而不是 JSON）。
+ *
+ * <p>本类不负责落盘；是否可用由 {@link AiSite#validateForAdd}（接口站点）或设备端自检（爬虫源）决定。
  * 用户 Key 只随请求头发送，不写入任何配置文件，也不出现在提示词、日志与错误文案里。
  */
 public final class AiSiteClient {
@@ -119,6 +122,74 @@ public final class AiSiteClient {
             format.put("type", "json_object");
             out.put("response_format", format);
         }
+        return out;
+    }
+
+    // ---------------------------------------------------------------- 写源提示词
+
+    /** 语言标记：首行 {@code #!lang=py} / {@code //!lang=js}，解析时剥离并由其决定落盘扩展名。 */
+    public static final String LANG_PY = "py";
+
+    public static final String LANG_JS = "js";
+
+    private static final Pattern LANG_PY_MARK = Pattern.compile("^#!\\s*lang\\s*=\\s*py\\s*$", Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern LANG_JS_MARK = Pattern.compile("^//!\\s*lang\\s*=\\s*js\\s*$", Pattern.CASE_INSENSITIVE);
+
+    /** 系统提示词：内联《写源技能书》v2.1 的硬契约，钉死产物形态。 */
+    public static String spiderSystemPrompt() {
+        return "你是 TVBox Spider 源作者。用户会给你一个视频网站的探测样本（首页、分类列表、详情、播放、搜索页的真实正文片段，可能已被截断），"
+                + "你要据此写出一个能被宿主直接加载运行的 Spider 源文件。\n"
+                + "硬契约（必须全部满足）：\n"
+                + "1. 文件里必须有 class Spider，且不要 import 或继承任何 base.spider；Spider() 必须能无参实例化。\n"
+                + "2. 宿主用 SourceFileLoader(...).load_module().Spider() 加载，文件顶层不要写会立即执行且可能抛异常的代码。\n"
+                + "3. 必备方法：getDependence、init、homeContent、homeVideoContent、categoryContent、detailContent、searchContent、"
+                + "playerContent、localProxy、manualVideoCheck、isVideoFormat、action、destroy。用不到的方法也要保留并返回空值。\n"
+                + "4. 多值分隔符固定为 $$$、#、$。\n"
+                + "5. playerContent 返回的 header 必须是 dict（可以是空 dict）。\n"
+                + "6. localProxy 必须返回 4 项。\n"
+                + "7. Python 源可用库仅限 requests、lxml、pyquery、bs4、ujson、cachetools、pycryptodome（Python 3.10）；"
+                + "JS 源使用宿主注入的 http 模块发起请求。\n"
+                + "8. 只使用样本里出现过的地址与字段，不要编造域名、接口或字段名。样本不足时选最保守的实现，并在 description 里说明。\n"
+                + "语言选择由你判断：需要 HTML 解析、加解密或较多分支时用 Python；以拼地址和正则为主时可以用 JavaScript。\n"
+                + "输出格式：第一行输出语言标记（Python 写 #!lang=py，JavaScript 写 //!lang=js），从第二行起输出源文件全文。"
+                + "不要解释、不要 markdown 代码块围栏、不要在源码前后加任何说明文字。";
+    }
+
+    /** 用户提示词：目标地址 + 探测样本正文。 */
+    public static String spiderUserPrompt(final String targetUrl, final String samples) {
+        return "目标网站：" + AiSite.normalize(targetUrl) + "\n"
+                + "探测样本：\n"
+                + (samples == null ? "" : samples);
+    }
+
+    /** 首次请求体：不带 {@code response_format}，因为产物是源码原文而不是 JSON。 */
+    public static JSONObject buildSpiderPayload(final String model, final String targetUrl, final String samples) throws Exception {
+        return spiderMessage(model, targetUrl, samples, null, null);
+    }
+
+    /** 重试请求体：把不能用的输出与原因回灌，要求重新给出完整源文件。 */
+    public static JSONObject buildSpiderRetryPayload(final String model, final String targetUrl, final String samples,
+                                                     final String badOutput, final String reason) throws Exception {
+        return spiderMessage(model, targetUrl, samples, badOutput, reason);
+    }
+
+    private static JSONObject spiderMessage(final String model, final String targetUrl, final String samples,
+                                            final String badOutput, final String reason) throws Exception {
+        JSONArray messages = new JSONArray();
+        messages.put(message("system", spiderSystemPrompt()));
+        messages.put(message("user", spiderUserPrompt(targetUrl, samples)));
+        if (badOutput != null) {
+            messages.put(message("assistant", badOutput));
+            messages.put(message("user", "你上一次的输出无法直接运行：" + (reason == null ? "不符合契约" : reason)
+                    + "。请重新输出完整的源文件全文，第一行先写语言标记。"));
+        }
+        JSONObject out = new JSONObject();
+        String name = model == null ? "" : model.trim();
+        if (!name.isEmpty()) out.put("model", name);
+        out.put("messages", messages);
+        out.put("temperature", 0.2);
+        out.put("stream", false);
         return out;
     }
 
@@ -342,6 +413,103 @@ public final class AiSiteClient {
             }
         }
         return failure(lastError);
+    }
+
+    /**
+     * 让 AI 按探测样本写一个可执行的 Spider 源。
+     *
+     * @return 成功 {@code {"ok":true,"lang":"py"|"js","source":"源码全文"}}；失败 {@code {"ok":false,"error"}}
+     */
+    public static JSONObject writeSpider(final String targetUrl, final String samples, final String apiUrl,
+                                         final String key, final String model) {
+        if (!AiSite.isHttpUrl(apiUrl)) return failure("AI 接口地址无效");
+        if (key == null || key.trim().isEmpty()) return failure("请先填写 AI Key");
+        if (!AiSite.isHttpUrl(targetUrl)) return failure("目标网站地址无效");
+        if (samples == null || samples.trim().isEmpty()) return failure("探测样本为空，无法写源");
+        String secret = key.trim();
+        String endpoint = endpoint(apiUrl);
+        String lastError = "";
+        String payload;
+        try {
+            payload = buildSpiderPayload(model, targetUrl, samples).toString();
+        } catch (Throwable e) {
+            return failure("请求构造失败");
+        }
+        for (int attempt = 0; attempt <= RETRY; attempt++) {
+            String content = "";
+            try {
+                String body = post(endpoint, secret, payload);
+                content = extractContent(body);
+                if (content.isEmpty()) {
+                    lastError = "AI 未返回内容";
+                    String hint = errorOf(body);
+                    if (!hint.isEmpty()) lastError = lastError + "：" + hint;
+                } else {
+                    JSONObject parsed = parseSpider(content);
+                    if (parsed.optBoolean("ok")) return parsed;
+                    lastError = parsed.optString("error", "AI 返回的内容不是 Spider 源");
+                }
+            } catch (HttpError e) {
+                lastError = e.getMessage();
+            } catch (Throwable e) {
+                lastError = redact(e.getClass().getSimpleName() + "：" + e.getMessage(), secret);
+            }
+            if (attempt >= RETRY) break;
+            try {
+                payload = buildSpiderRetryPayload(model, targetUrl, samples, content, lastError).toString();
+            } catch (Throwable e) {
+                break;
+            }
+        }
+        return failure(lastError);
+    }
+
+    /** 剥离围栏与首行语言标记，并校验产物确实是 Spider 源。 */
+    public static JSONObject parseSpider(final String content) {
+        String text = stripCodeFence(content);
+        if (text.isEmpty()) return failure("AI 未返回源码");
+        String[] lines = text.split("\n", -1);
+        String lang = "";
+        int start = 0;
+        for (int i = 0; i < Math.min(3, lines.length); i++) {
+            String line = lines[i].trim();
+            if (LANG_PY_MARK.matcher(line).matches()) {
+                lang = LANG_PY;
+                start = i + 1;
+                break;
+            }
+            if (LANG_JS_MARK.matcher(line).matches()) {
+                lang = LANG_JS;
+                start = i + 1;
+                break;
+            }
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int i = start; i < lines.length; i++) {
+            if (builder.length() > 0) builder.append('\n');
+            builder.append(lines[i]);
+        }
+        String source = builder.toString().trim();
+        if (!source.contains("class Spider")) return failure("AI 返回的内容里没有 class Spider");
+        if (lang.isEmpty()) lang = guessLang(source);
+        try {
+            JSONObject out = new JSONObject();
+            out.put("ok", true);
+            out.put("lang", lang);
+            out.put("source", source);
+            return out;
+        } catch (Throwable e) {
+            return failure("写源结果无法解析");
+        }
+    }
+
+    /** 模型没写语言标记时按源码特征兜底。 */
+    public static String guessLang(final String source) {
+        String text = source == null ? "" : source;
+        if (text.contains("class Spider:")) return LANG_PY;
+        if (text.contains("import ") && text.contains("def ")) return LANG_PY;
+        if (text.contains("function ") || text.contains("=>") || text.contains("var ")) return LANG_JS;
+        return LANG_PY;
     }
 
     /** 用户常只填服务根地址（如 {@code https://api.deepseek.com}），这里补全成 chat/completions 端点。 */
