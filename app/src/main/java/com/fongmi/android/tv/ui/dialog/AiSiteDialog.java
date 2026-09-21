@@ -55,7 +55,7 @@ public class AiSiteDialog extends BaseAlertDialog {
     private SiteAdapter adapter;
     private Runnable callback;
     private boolean running;
-    private boolean changed;
+    private boolean added;
 
     public static void show(Fragment fragment) {
         show(fragment, null);
@@ -188,12 +188,10 @@ public class AiSiteDialog extends BaseAlertDialog {
             Notify.show(R.string.ai_site_delete_fail);
             return;
         }
-        changed = true;
-        AiSite.activate(App.get(), () -> App.post(() -> {
-            refreshSites();
-            Notify.show(R.string.ai_site_deleted);
-            if (callback != null) callback.run();
-        }));
+        AiSite.reloadConfigs();
+        refreshSites();
+        Notify.show(R.string.ai_site_deleted);
+        if (callback != null) callback.run();
     }
 
     // ---------------------------------------------------------------- 识别（D7）
@@ -210,7 +208,7 @@ public class AiSiteDialog extends BaseAlertDialog {
             return;
         }
         persistFields();
-        changed = false;
+        added = false;
         running = true;
         updateActions();
         Notify.show(R.string.ai_site_running);
@@ -226,20 +224,14 @@ public class AiSiteDialog extends BaseAlertDialog {
         });
     }
 
-    /** 识别结束后收尾：只有真的加了站点才切换当前接口配置，否则不打扰用户已有的配置。 */
+    /** 识别结束后收尾：本次真的加了站点才重载配置，避免无谓地重取用户当前配置。 */
     private void finishRecognize(final String message) {
         running = false;
         updateActions();
-        if (!changed) {
-            Notify.show(message);
-            if (callback != null) callback.run();
-            return;
-        }
-        AiSite.activate(App.get(), () -> App.post(() -> {
-            refreshSites();
-            Notify.show(message);
-            if (callback != null) callback.run();
-        }));
+        if (added) AiSite.reloadConfigs();
+        refreshSites();
+        Notify.show(message);
+        if (callback != null) callback.run();
     }
 
     /** 返回给用户看的一句话结果。 */
@@ -272,7 +264,7 @@ public class AiSiteDialog extends BaseAlertDialog {
     private String addOne(final JSONObject site) {
         if (site == null) return ResUtil.getString(R.string.ai_site_add_fail, "");
         String error = AiSite.addSite(App.get(), site);
-        if (error.isEmpty()) changed = true;
+        if (error.isEmpty()) added = true;
         return error.isEmpty() ? ResUtil.getString(R.string.ai_site_added_ok) : ResUtil.getString(R.string.ai_site_add_fail, error);
     }
 

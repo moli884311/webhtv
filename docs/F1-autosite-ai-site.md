@@ -203,6 +203,8 @@
 
 ### D2. 站点产物只可能是 type 1 或 type 0，**不含 type 3**（星落做法不同，已核对）
 
+> **已被 §12 推翻（2026-09-21，用户纠正）**：壳子内置 Chaquopy(Python 3.10) 与 QuickJS，`.py`/`.js` 源按 api 后缀自动分派（`BaseLoader.java:58`），**type 3 是主路径**；「LLM 无法生成可运行爬虫」的前提不成立。以下内容仅作历史记录。
+
 - `type:3` 需要可执行的 spider（`jar`/`csp_*`），**LLM 无法凭空生成可运行爬虫**。
 - 本方案的承诺边界：AI 负责「找出该站可用的接口与参数」，产出 **type 1（苹果CMS JSON）** 或 **type 0（网页/XML）** 站点。
 - 若目标站既无 maccms 接口、也无法用 type 0 表达，**如实报「识别失败」**，不允许伪造一个打不开的站点。这是本设计的诚实性底线。
@@ -210,6 +212,8 @@
 - 结论：F1 走「接口发现」路线（可稳健实现、可实测验证）；「规则驱动爬虫解释器」等价于自研 XBPQ，**另立任务 F1-B**，不在 F1 范围内。不因为星落这么做就假装我们也能。
 
 ### D3. 持久化用「单个分组配置」，不用 `CustomCspSetting` 注册表
+
+> **已被 §12 推翻（2026-09-21，用户纠正）**：`CustomCspSetting.inject()` 在配置加载时把启用条目**插入当前 config 的 sites**（`VodConfig.java:200`），正是「在 饭太硬 之上加一个源」；`file://` 由壳子 `/file/` 路由本地提供（`UrlUtil.java:46`、`server/process/Local.java:35`）。**改用该注册表**。以下内容仅作历史记录。
 
 - 采用 `filesDir/moliys_ai_sites.json`，内容 `{"name":"AI 自动站点","sites":[...]}`；`Config.find(url, name, 0)` + `VodConfig.load`，与 `CaiSite` 同路径。
 - 未采用 `CustomCspSetting`：那是「自定义 CSP 类型注入」的注册表，带 `__custom_csp_` 前缀与 `MAX_INSERT_INDEX=9` 等专用约束，语义不匹配；用它会把 AI 站点混进 CSP 概念里。
@@ -369,4 +373,129 @@
    - **不接受**：反编译抄源码 —— 理由见 §4.5（Go 产物反不出、同 FongMi 血统上游本就开源、smali 产物有损无许可）。
    - 若某个事实确实只在星落里，请在对应功能确认时指名，按「提事实」口径处理。
 
-**剩余待定（不阻塞 S1 开工）**：入口行落「增强设置」（推荐，与 `shellProxy` 同级）还是「基础设置」（`openVideoSettings()` 的默认落点）。
+**剩余待定（不阻塞 S1 开工）**：入口行落「增强设置」（推荐，与 `shellProxy` 同级）还是「基础设置」（`openVideoSettings()` 的默认落点）。**已于 §12 定案：落「增强设置」，入口行与 `shellProxy` 同级。**
+
+---
+
+## 12. 修订（2026-09-21，用户纠正）——交付载体改为壳子自带自定义源，产物改为可执行 Spider 源
+
+用户原话：「你的方向错了 …… 我的主页打开是饭太硬，加沫离站源应该是**在饭太硬的基础上添加一个沫离站源**」「js 源 py 源都是可以用的」「ai 要抓分类、抓标题、抓图片、抓详情、播放链接、搜索，整理好了再写源」。
+
+本节推翻 D2、D3，并重写 §5 的产物形态与 §8 的实施内容。D4（LLM 调用契约）的传输部分保留，**body 的 `response_format` 与返回解析改写**（见 §12.5）。
+
+### 12.1 推翻 D2 / D3 的证据（本仓库 file:line）
+
+| 事实 | 证据 |
+|---|---|
+| 站点源类型按 `api` 后缀分派，`.py`→Chaquopy、`.js`→QuickJS、`csp_`→Jar | `app/src/main/java/com/fongmi/android/tv/api/loader/BaseLoader.java:39-66`（`isJs`/`isPy`/`isCsp`，`getSpider` `:58`） |
+| Python 运行时已内置，3.10，含爬虫常用库 | `chaquo/build.gradle`（Chaquopy 17.0.0）、`chaquo/requirements.txt`（`lxml` `ujson` `pyquery` `requests` `cachetools` `pycryptodome` `beautifulsoup4`） |
+| `.py` 源支持「api 即源码」与「api 为 http 下载并缓存」两条路 | `chaquo/src/main/java/com/fongmi/chaquo/Loader.java:31-58`；`chaquo/src/main/python/app.py`（`SourceFileLoader(...).load_module().Spider()`） |
+| `.js` 源支持 http / `assets://` / `lib/` 三种来源 | `quickjs/src/main/java/com/fongmi/quickjs/utils/Module.java:22-29` |
+| 自定义源注册表会把启用条目**插入当前 config 的 sites**，`insertIndex ≤ 9` | `app/src/main/java/com/fongmi/android/tv/setting/CustomCspSetting.java:381`（`inject`）、`:44`（`MAX_INSERT_INDEX`）；调用点 `app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java:200` |
+| 本地源码由壳子自带的 `/file/` 路由提供服务，无需自建服务 | `CustomCspSetting.localUrl` `:377`（`file://TV/CustomCsp/<id>/<name>`）→ `app/src/main/java/com/fongmi/android/tv/utils/UrlUtil.java:46-53`（`file://`→`Server.getAddress("/file/")`）→ `app/src/main/java/com/fongmi/android/tv/server/process/Local.java:35-51`（按 MIME 输出 `Path.local`） |
+| 「保存自定义源 → 重载配置」已有成熟调用序列 | `app/src/main/java/com/fongmi/android/tv/ui/dialog/CustomCspDialog.java:551-567`（`save(registry)` → `reloadConfigs()`） |
+
+结论：**D2 的「type 3 不可做」不成立**（type 3 是壳子原生能力，`.py`/`.js` 均可跑）；**D3 的「另起分组配置再切换」被用户明确否决**（正确语义由 `CustomCspSetting.inject` 提供）。同时否掉本修订前讨论的两个选项：选项 A「内联进 `api`」不再需要（本地文件已可被壳子加载），选项 C「上传服务器托管」也不必要（仅在本机自用场景）。
+
+### 12.2 修订后的交付模型
+
+**一条「AI 源」= `CustomCspSetting` 的一个 `Item` + 一个本地源码文件。** 不使用 `AiSite` 自建分组、不调用 `VodConfig.load` 切配置。
+
+落盘序列（复用既有 API，除写入文本一行外无新增壳子能力）：
+
+1. `id = CustomCspSetting` 的 id 规则；`target = CustomCspSetting.file(id, name)`（`:373`），`Path.write(target, source)` 写入生成的源码（`name` 带 `.py` 或 `.js` 后缀，供 `BaseLoader` 分派）
+2. `Item item = CustomCspSetting.createDefaultItem()`（`:497`）；设 `id` / `name`（站名）/ `api = CustomCspSetting.localUrl(id, name)`（`:377`）/ `kind = csp` / `type = 3` / `enabled = true` / `searchable = true`
+3. `CustomCspSetting.save(registry)`（`:292`）→ `reloadConfigs()`
+4. 生效结果：影视主页站点列表 = **当前配置原有源（饭太硬）+ 新增的沫离站源**，原有源与排序不变
+5. 删除：从 `registry.items` 移除该 `Item` → `save` → 重载；清理 `CustomCspSetting.dir()/id/` 文件（`cleanupDeletedFiles` 语义）
+
+### 12.3 写源流水线（四步）
+
+1. **探测（设备端，原生，不耗 AI 额度）**：按 §12.4 抓取样本。
+2. **写源（AI）**：把样本 + 规范契约（§12.5）交给用户配置的 LLM，产出**单个源文件全文**。
+3. **自检（设备端，规范 §12 落地）**：按 §12.6 真实加载并跑一遍；失败则把错误回灌 LLM 修 1 轮；仍失败**明确报「这个站做不出来」并且不落盘**（保持诚实性底线）。
+4. **落盘 + 注入**：按 §12.2。
+
+### 12.4 探测样本规格
+
+| 样本 | 取法 | 记录内容 |
+|---|---|---|
+| 首页 | 目标 URL | 清洗后 HTML（去 `script`/`style`）、所有 `<a href>` 的文本与绝对 URL |
+| 分类列表页 | 从首页取 1~2 个疑似分类链接 | 同上；用于推导列表项选择器与翻页规则 |
+| 详情页 | 从列表页取第 1 个影片链接 | 同上；用于推导 `vod_play_url` 结构 |
+| 播放页 | 从详情页取第 1 个播放链接 | 页面 HTML + 请求到的 m3u8/mp4 地址（**用于确认链路真实可达**） |
+| 搜索页 | 用固定词（如「电影」）请求站内搜索 | 搜索 URL 模板 + 结果 HTML（用于写 `searchContent`） |
+| SPA 补充 | 首页含 `<script src>` 且正文空时 | 抓取 JS 文件文本，提取其中的 API 端点与字段名 |
+
+约束：单样本正文截断 100 KB（沿用 D6）；每个样本记录 `URL` + `角色` + `正文`；总预算 ≤ 6 个请求 + 1 次播放地址请求。
+
+### 12.5 写源提示词契约
+
+- system：固定角色为「TVBox Spider 源作者」，内联《写源技能书》`TVBox_Spider_SKILL_fixed.md` 的硬契约：**必须含 `class Spider`、无参可实例化、不继承 `base.spider`、`init()` 由宿主调用、必须能被 `SourceFileLoader(...).load_module().Spider()` 加载**；必备接口 `getDependence`/`init`/`homeContent`/`homeVideoContent`/`categoryContent`/`detailContent`/`searchContent`/`playerContent`/`localProxy`/`manualVideoCheck`/`isVideoFormat`/`action`/`destroy`；分隔符 `$$$` / `#` / `$`；`playerContent.header` 必须是 `dict`；`localProxy` 返回 4 项；可用库限定为 `requests` / `lxml` / `pyquery` / `bs4` / `ujson` / `cachetools` / `pycryptodome`。
+- user：目标 URL + §12.4 全部样本 + 产出要求。**语言由 AI 自行判断**（用户 2026-09-21：「没有固定的方式，只有 ai 自己判断当前检测的站点适合哪个写法就用哪个」）：按该站特征（是否需要 JS 端加解密、是否依赖 Python 库、解析复杂度）自选 `.py` 或 `.js`，**不设固定默认、界面不提供语言开关**。
+- **语言标记**：要求 AI 在源码首行输出 `#!lang=py` 或 `//!lang=js`；解析层读取该行后**剥离**它，并据此决定落盘扩展名。标记缺失时退回内容启发式（`class Spider:`/`def `/`import ` → `.py`；`function `/`var `/`=>` → `.js`）；两侧都不像则判失败。
+- **输出 = 源码全文**，因此：**去掉 `response_format: {"type":"json_object"}`**；解析层剥离 ```` ```python/```js ```` 围栏，直接取正文；返回不含 `class Spider` 则判失败。
+- `temperature: 0.2`、`stream: false`、超时 60 s、失败重试 1 沿用 D4。
+
+### 12.6 自检契约
+
+在设备端按加载器同路径加载并执行，全部通过才落盘：
+
+1. 加载：`.py` 走 Chaquopy `SourceFileLoader(...).load_module().Spider()`；`.js` 走 QuickJS `Module.fetch` + `evaluateModule`
+2. `getDependence()` → 若返回依赖串，先 `init("")` 成功
+3. `homeContent(False)` → 返回项数 > 0
+4. `categoryContent("1","1",False,{})` → 用首页第一个分类 id 取第 1 页，返回项数 > 0
+5. `detailContent([homeContent 第一个 id])` → 含播放列表
+6. `searchContent("电影", False)` → 返回项数 > 0（若探测阶段确认该站无搜索，则本项记为「不适用」而不是失败）
+7. `playerContent("", "", 播放列表首项)` → 得到 `url`，**实际请求一次确认为 m3u8/mp4**
+8. 任一步骤抛异常/超时 → 记错误文本，回灌 LLM 修 1 轮后重跑；仍失败 → 报「做不出来」，不落盘
+
+### 12.7 对既有 F1 代码的处置
+
+| 文件 | 处置 |
+|---|---|
+| `AiSiteDialog.java` | **保留 UI**（设置页入口行 + 对话框）；**已删除** `AiSite.activate(...)` 切换逻辑；原 `changed` 字段改为 `added`（仅表示本次识别是否新增了站点，用于决定是否需要重载配置）；删除源与新增源后调用 `AiSite.reloadConfigs()` |
+| `AiSite.java` | **已删除** `activate()` / `configUri()` / 分组配置持久化（`moliys_ai_sites.json`）与 `siteKey` / `normalizeSite` / `mergeSite` / `dropSite` / `buildConfig`；改为 `CustomCspSetting` 注册表落盘（`loadSites`/`addSite`/`removeSite`/`countSites`/`reloadConfigs`）；保留 `normalize`/`hostOf`/`sha1`（供 `idOf`）与全部探测/校验逻辑 |
+| `AiSiteSetting.java` | 保留（AI 地址/模型/Key 读写） |
+| `AiSiteClient.java` | `endpoint()` 裸域补全与 `HttpError` 带 URL **保留**；新增 `writeSpider(samples, lang)`（返回源码文本）；`detect(...)` 的 JSON 解析保留供旧路径与回归使用 |
+| `AiSite S3a`（`looksLikeApi`/`fromHomepageHtml`） | 保留为「探测阶段的快速判定」（能直接命中 maccms JSON 时走 type 1 捷径，省一次 AI 调用），**但不再是唯一路径** |
+| `docs/F1-autosite-ai-site.md` D2/D3 | 已就地标注「被 §12 推翻」 |
+
+### 12.8 验收标准
+
+1. 在装有 饭太硬 配置的设备上，「增强设置 → AI 建站」输入一个真实影视站 URL，等待完成
+2. 影视主页站点列表出现**新增的沫离站源**，且**饭太硬 仍在、排序不变**
+3. 点进新源：分类有内容、详情有播放列表、能起播
+4. 搜索页输入关键词有结果（无搜索能力的站点除外，且界面明示）
+5. 生成的源码可在 `CustomCspSetting.dir()/id/` 下看到，扩展名与所选语言一致
+6. 删除该源后主页列表恢复原状，文件被清理
+
+### 12.9 风险与回滚
+
+| 风险 | 缓解 |
+|---|---|
+| LLM 写出的源跑不通 | §12.6 真机自检；失败回灌修 1 轮；仍失败明确报错不落盘 |
+| 生成的源码在本机执行（Python/JS） | 仅本机、仅用户主动触发、仅用户自己给的站点；源码文本可视可删 |
+| 误改用户既有自定义源 | 只 `append` 新 `Item`，不改 `items` 中既有条目；`insertIndex` 沿用现值 |
+| 站点站内搜索缺失导致误判失败 | §12.6 第 6 项允许记为「不适用」 |
+| 与既有「采集」功能混淆 | 仍为独立入口与独立文件，不改 `CaiSite` |
+
+**回滚**：`revert` 对应 commit；用户在设置页删除生成源即可清干净（`registry` 与文件均随之移除）。本修订**不移除壳子既有能力、不改原生库、不改 APK 体积级别**。
+
+### 12.10 用户已确认项（2026-09-21，本节修订）
+
+1. **生成语言 = AI 自行判断**（不设固定默认、界面不给语言开关），按站点特征选 `.py` 或 `.js`；解析层按首行 `#!lang=` 标记决定扩展名。
+2. **保留 maccms JSON 捷径**：目标站自带 `/api.php/provide/vod` 时直接加为 type 1 站点、跳过 AI。
+3. **探测站内搜索的关键词 = 「电影」**。
+4. **落点确认**：入口行落「增强设置」，与 `shellProxy` 同级（§12 定案）。
+
+### 12.11 实施拆分
+
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| S6-r2a | 落盘/注入改造：`AiSite` 改用 `CustomCspSetting` 注册表，删除 `activate()`/`configUri()`/分组配置 | **已完成**（本地 harness 49 断言全过；`reloadConfigs()` 重载当前配置而非切换配置；maccms 捷径保留可用） |
+| S6-r2b | 探针：`AiSiteProbe`（首页/分类/详情/播放/搜索 + SPA 抓 JS） | 待开始 |
+| S6-r2c | 写源：`AiSiteClient.writeSpider(samples)` + system 契约注入 + 语言标记解析 | 待开始 |
+| S6-r2d | 自检：`AiSiteSelfTest`（`BaseLoader.get().getSpider` 同路径加载并跑 §12.6 契约） | 待开始 |
+| S6-r2e | `AiSiteDialog` 串联四步 + 进度/失败提示 + i18n | 待开始 |
+| S6-r2f | 版本 1.0.64 → CI → 下载校验 → 上传 → 真机复验 | 待开始 |

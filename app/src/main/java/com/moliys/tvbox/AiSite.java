@@ -3,43 +3,37 @@ package com.moliys.tvbox;
 import android.content.Context;
 
 import com.fongmi.android.tv.api.config.VodConfig;
-import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.impl.Callback;
+import com.fongmi.android.tv.setting.CustomCspSetting;
 import com.github.catvod.net.OkHttp;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 「自动站点」：把用户给的一个视频网站地址（或现成 JSON 配置）变成可被内核加载的站点配置。
+ * 「自动站点」：把用户给的一个视频网站地址变成可被内核加载的站点。
  *
- * <p>单体文件 {@value #FILE_NAME} 承载全部自动站点，统一由一条配置加载。站点 {@code key} 由接口地址
- * 确定性派生，保证同一站点稳定、不同站点不冲突（{@code Site.equals} 只比较 {@code key}，同 key 会被当成同一站点）。
+ * <p>站点持久化复用壳子既有的「自定义源」注册表 {@link CustomCspSetting}：条目在配置加载时被注入
+ * 当前接口配置的站点列表（{@code CustomCspSetting.inject}，调用点 {@code VodConfig}），因此新站与
+ * 原配置里的源并存，不切换、不覆盖用户既有配置。条目 {@code id} 由接口地址确定性派生，重复识别同一
+ * 站点会覆盖原条目，不产生重复项。
  *
- * <p>纯逻辑（key 生成、类型判定、结构校验、合并去重）与需要 {@link Context} 的落盘逻辑分开，
+ * <p>纯逻辑（id 生成、类型判定、结构校验）与需要 {@link Context} 的落盘逻辑分开，
  * 便于在不具备 Android 运行时的环境下直接验证。
  */
 public final class AiSite {
 
-    /** 承载全部自动站点的单文件配置。 */
-    public static final String FILE_NAME = "moliys_ai_sites.json";
-
-    /** 分组名：内核站点列表里显示的名字。 */
-    public static final String GROUP_NAME = "AI 自动站点";
-
-    /** 站点 key 前缀，避免与既有 {@link CaiSite#SITE_KEY} 等其他来源冲突。 */
-    public static final String KEY_PREFIX = "moliys_ai_";
+    /** 自定义源条目 id 前缀：用于把「AI 建站」产生的条目与用户手工添加的条目区分开。 */
+    public static final String ID_PREFIX = "ai_";
 
     /** 网页 / XML 源。 */
     public static final int TYPE_WEB = 0;
@@ -47,7 +41,7 @@ public final class AiSite {
     /** 苹果CMS JSON 源。 */
     public static final int TYPE_JSON = 1;
 
-    /** 可执行爬虫，本方案不支持（无法凭空生成可运行爬虫）。 */
+    /** 可执行爬虫源（{@code .py} / {@code .js}），由 AI 按站点特征生成。 */
     public static final int TYPE_SPIDER = 3;
 
     private static final long DETECT_TIMEOUT = 8000L;
@@ -61,15 +55,15 @@ public final class AiSite {
     private AiSite() {
     }
 
-    // ---------------------------------------------------------------- key 生成
+    // ---------------------------------------------------------------- 条目 id
 
-    /** 站点 key：{@value #KEY_PREFIX} + sha1(host|规范化 api) 前 10 位。 */
-    public static String siteKey(final String api) {
+    /** 条目 id：{@value #ID_PREFIX} + sha1(host|规范化 api) 前 10 位；同一站点稳定、不同站点不冲突。 */
+    public static String idOf(final String api) {
         String normalized = normalize(api);
-        return KEY_PREFIX + sha1(hostOf(normalized) + "|" + normalized).substring(0, 10);
+        return ID_PREFIX + sha1(hostOf(normalized) + "|" + normalized).substring(0, 10);
     }
 
-    /** 去掉首尾空白与尾部斜杠，保证同一地址的不同写法得到同一 key。 */
+    /** 去掉首尾空白与尾部斜杠，保证同一地址的不同写法得到同一 id。 */
     static String normalize(final String api) {
         String text = api == null ? "" : api.trim();
         while (text.endsWith("/")) text = text.substring(0, text.length() - 1);
@@ -209,29 +203,14 @@ public final class AiSite {
         if (site.optString("name", "").trim().isEmpty()) return "站点名称为空";
         String api = site.optString("api", "").trim();
         if (api.isEmpty()) return "接口地址为空";
-        if (!isHttpUrl(api)) return "接口地址必须是 http/https 链接";
         int type = site.optInt("type", TYPE_WEB);
-        if (type != TYPE_WEB && type != TYPE_JSON) return "站点类型只支持 0（网页/XML）或 1（苹果CMS JSON）";
-        return "";
-    }
-
-    /** 补齐站点必备字段并生成唯一 key；key 为空或等于采集站的固定 key 时按接口地址重新派生。 */
-    public static JSONObject normalizeSite(final JSONObject site) {
-        try {
-            String api = normalize(site.optString("api", ""));
-            String key = site.optString("key", "").trim();
-            if (key.isEmpty() || CaiSite.SITE_KEY.equals(key)) key = siteKey(api);
-            JSONObject out = new JSONObject();
-            out.put("key", key);
-            out.put("name", site.optString("name", "").trim());
-            out.put("type", site.optInt("type", TYPE_WEB));
-            out.put("api", api);
-            out.put("searchable", 1);
-            out.put("quickSearch", 1);
-            return out;
-        } catch (Throwable e) {
-            return null;
+        if (type == TYPE_SPIDER) {
+            String lower = api.toLowerCase(Locale.ROOT);
+            return lower.endsWith(".py") || lower.endsWith(".js") ? "" : "爬虫源的接口地址必须以 .py 或 .js 结尾";
         }
+        if (!isHttpUrl(api)) return "接口地址必须是 http/https 链接";
+        if (type != TYPE_WEB && type != TYPE_JSON) return "站点类型只支持 0（网页/XML）、1（苹果CMS JSON）或 3（爬虫源）";
+        return "";
     }
 
     // ---------------------------------------------------------------- 网络实测
@@ -265,149 +244,110 @@ public final class AiSite {
         return "";
     }
 
-    // ---------------------------------------------------------------- 纯 JSON 合并
+    // ---------------------------------------------------------------- 落盘（自定义源注册表）
 
-    /** 同 key 视为同一站点并替换，其余保持原顺序，新站点追加在末尾。 */
-    public static JSONArray mergeSite(final JSONArray sites, final JSONObject site) {
-        JSONArray out = new JSONArray();
-        if (site == null) return sites == null ? out : sites;
-        String key = site.optString("key", "");
-        for (int i = 0; i < length(sites); i++) {
-            JSONObject item = sites.optJSONObject(i);
+    /** 全部「AI 建站」条目（id 以 {@value #ID_PREFIX} 开头）；按注册表顺序返回。 */
+    private static List<CustomCspSetting.Item> aiItems() {
+        List<CustomCspSetting.Item> out = new ArrayList<>();
+        for (CustomCspSetting.Item item : CustomCspSetting.load().getItems()) {
             if (item == null) continue;
-            if (!key.isEmpty() && key.equals(item.optString("key", ""))) continue;
-            out.put(item);
-        }
-        out.put(site);
-        return out;
-    }
-
-    /** 按 key 删除站点。 */
-    public static JSONArray dropSite(final JSONArray sites, final String key) {
-        JSONArray out = new JSONArray();
-        for (int i = 0; i < length(sites); i++) {
-            JSONObject item = sites.optJSONObject(i);
-            if (item == null) continue;
-            if (key != null && key.equals(item.optString("key", ""))) continue;
-            out.put(item);
+            String id = item.getId();
+            if (id == null || !id.startsWith(ID_PREFIX)) continue;
+            out.add(item);
         }
         return out;
     }
 
-    /** 生成可被内核按配置加载的分组配置 JSON。 */
-    public static String buildConfig(final JSONArray sites) {
-        try {
-            JSONObject root = new JSONObject();
-            root.put("name", GROUP_NAME);
-            root.put("sites", sites == null ? new JSONArray() : sites);
-            return root.toString();
-        } catch (Throwable e) {
-            return "";
-        }
-    }
-
-    private static int length(final JSONArray array) {
-        return array == null ? 0 : array.length();
-    }
-
-    // ---------------------------------------------------------------- 落盘
-
-    /** 读取本地全部自动站点；文件不存在或损坏时返回空数组。 */
+    /** 本地 AI 站点列表；元素含 {@code key}/{@code id}/{@code name}/{@code api}/{@code type}，供界面展示与删除。 */
     public static JSONArray loadSites(final Context context) {
-        try {
-            File file = new File(context.getFilesDir(), FILE_NAME);
-            if (!file.exists()) return new JSONArray();
-            JSONArray sites = new JSONObject(readText(file)).optJSONArray("sites");
-            return sites == null ? new JSONArray() : sites;
-        } catch (Throwable e) {
-            return new JSONArray();
-        }
-    }
-
-    /** 原子覆盖写入本地自动站点配置。 */
-    public static boolean saveSites(final Context context, final JSONArray sites) {
-        try {
-            File file = new File(context.getFilesDir(), FILE_NAME);
-            FileOutputStream out = new FileOutputStream(file);
+        JSONArray out = new JSONArray();
+        for (CustomCspSetting.Item item : aiItems()) {
             try {
-                out.write(buildConfig(sites).getBytes(StandardCharsets.UTF_8));
-                out.flush();
-            } finally {
-                out.close();
+                JSONObject json = new JSONObject();
+                json.put("key", item.getId());
+                json.put("id", item.getId());
+                json.put("name", item.getName());
+                json.put("api", item.getApi());
+                json.put("type", item.getType() == null ? TYPE_WEB : item.getType());
+                out.put(json);
+            } catch (Throwable ignored) {
             }
-            return true;
-        } catch (Throwable e) {
-            return false;
         }
+        return out;
     }
 
     /** 校验并加入一个站点；成功返回空串，失败返回可读原因且不改动现有配置。 */
     public static String addSite(final Context context, final JSONObject site) {
         String error = validateForAdd(site);
         if (!error.isEmpty()) return error;
-        JSONObject normalized = normalizeSite(site);
-        if (normalized == null) return "站点数据无法解析";
-        return saveSites(context, mergeSite(loadSites(context), normalized)) ? "" : "写入站点配置失败";
+        try {
+            String api = normalize(site.optString("api", ""));
+            String id = idOf(api);
+            CustomCspSetting.Registry registry = CustomCspSetting.load();
+            List<CustomCspSetting.Item> items = new ArrayList<>(registry.getItems());
+            items.removeIf(item -> item != null && id.equals(item.getId()));
+            items.add(newItem(id, site, api));
+            registry.setItems(items);
+            registry.setEnabled(true);
+            CustomCspSetting.save(registry);
+            return "";
+        } catch (Throwable e) {
+            return messageOf(e);
+        }
     }
 
-    /** 按 key 删除站点。 */
-    public static boolean removeSite(final Context context, final String key) {
-        if (key == null || key.trim().isEmpty()) return false;
-        return saveSites(context, dropSite(loadSites(context), key.trim()));
+    /** 构造自定义源条目：通用 CSP 类型（非 WebHome），启用并参与配置注入。 */
+    private static CustomCspSetting.Item newItem(final String id, final JSONObject site, final String api) {
+        CustomCspSetting.Item item = new CustomCspSetting.Item();
+        item.setId(id);
+        item.setName(site.optString("name", "").trim());
+        item.setType(site.optInt("type", TYPE_WEB));
+        item.setApi(api);
+        item.setWebHome(false);
+        item.setSearchable(1);
+        item.setEnabled(true);
+        return item;
     }
 
-    /** 本地站点数量。 */
+    /** 按条目 id 删除站点；注册表保存时会一并清理该条目的文件目录。 */
+    public static boolean removeSite(final Context context, final String id) {
+        String target = id == null ? "" : id.trim();
+        if (target.isEmpty()) return false;
+        try {
+            CustomCspSetting.Registry registry = CustomCspSetting.load();
+            List<CustomCspSetting.Item> items = new ArrayList<>(registry.getItems());
+            if (!items.removeIf(item -> item != null && target.equals(item.getId()))) return false;
+            registry.setItems(items);
+            CustomCspSetting.save(registry);
+            return true;
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
+    /** 本地 AI 站点数量。 */
     public static int countSites(final Context context) {
-        return loadSites(context).length();
-    }
-
-    /** 可交给 {@code Config.create(0, url, name)} 加载的本地地址。 */
-    public static String configUri(final Context context) {
-        return "file://" + new File(context.getFilesDir(), FILE_NAME).getAbsolutePath();
+        return context == null ? 0 : aiItems().size();
     }
 
     /**
-     * 把「AI 自动站点」分组设为当前接口配置，使其出现在影视主页的站源列表里。
+     * 重新加载当前接口配置，让自定义源注册表的改动立即生效。
      *
-     * <p>与采集页「打开站点」走同一条路径（{@code Config.find} + {@code VodConfig.load}），因此需要在主线程调用，
-     * 且回调可能发生在任意线程。一个站点都没有时不切换配置，避免把主页清空。无论成功失败都会回调 {@code done}。
+     * <p>加载的是用户当前的那份配置（不切换配置），重载期间 {@code CustomCspSetting.inject} 会把注册表
+     * 里的条目注入站点列表，因此原配置自带的源保留，只是多出或减少一个 AI 站源。需要在主线程调用。
      */
-    public static void activate(final Context context, final Runnable done) {
-        if (countSites(context) == 0) {
-            if (done != null) done.run();
-            return;
-        }
+    public static void reloadConfigs() {
         try {
-            VodConfig.load(Config.find(configUri(context), GROUP_NAME, 0), new Callback() {
-                @Override
-                public void success() {
-                    if (done != null) done.run();
-                }
-
-                @Override
-                public void error(String msg) {
-                    if (done != null) done.run();
-                }
+            VodConfig.get().clear().config(VodConfig.get().getConfig()).load(new Callback() {
             });
         } catch (Throwable e) {
-            if (done != null) done.run();
+            // 重载失败不影响已落盘的注册表，下次加载配置时会再次注入
         }
     }
 
-    private static String readText(final File file) {
-        try {
-            InputStream in = new java.io.FileInputStream(file);
-            try {
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                byte[] buffer = new byte[4096];
-                int read;
-                while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
-                return new String(out.toByteArray(), StandardCharsets.UTF_8);
-            } finally {
-                in.close();
-            }
-        } catch (Throwable e) {
-            return "";
-        }
+    private static String messageOf(final Throwable error) {
+        String message = error == null ? "" : String.valueOf(error.getMessage());
+        if (message.isEmpty()) message = error == null ? "" : error.getClass().getSimpleName();
+        return message.length() > 120 ? message.substring(0, 120) : message;
     }
 }
