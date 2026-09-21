@@ -38,10 +38,39 @@ public final class AiSiteProbe {
     /** 单个样本正文上限，与 D6「只发清洗后前 100 KB」一致。 */
     public static final int MAX_BODY = 100 * 1024;
 
-    /** 总请求预算：6 个页面 + 1 次播放地址确认。 */
-    static final int MAX_FETCH = 7;
+    /**
+     * 总请求预算：首页最多 4 次（换 User-Agent 重试）+ 分类 1 + 详情 1 + 播放 1 + 播放确认 1
+     * + 搜索 1 + 脚本包 2 + 余量。
+     */
+    static final int MAX_FETCH = 12;
+
+    /** 首页/脚本最多尝试的 User-Agent 个数。 */
+    static final int MAX_UA = 4;
+
+    /** 一次探测最多补抓几个脚本包。 */
+    static final int MAX_SCRIPT = 2;
 
     static final long TIMEOUT = 15000L;
+
+    /**
+     * 依次尝试的 User-Agent。「抓不到结构」很多时候是站点按 UA 拦截或不认默认 UA，
+     * 桌面 Chrome → 移动 Chrome → Android TV → iOS Safari 覆盖常见的三种放行策略。
+     */
+    private static final String[] USER_AGENTS = {
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Linux; Android 13; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+            "Mozilla/5.0 (Linux; Android 9; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Safari/537.36",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    };
+
+    private static final String[] UA_NAMES = {"桌面 Chrome", "移动 Chrome", "Android TV", "iOS Safari"};
+
+    /** 命中则视为「被拦截/验证页」，换 UA 重试。 */
+    private static final String[] BLOCKED_WORDS = {
+            "just a moment", "cf-browser-verification", "checking your browser", "attention required",
+            "access denied", "403 forbidden", "人机验证", "安全验证", "请稍候", "请开启javascript",
+            "请启用javascript", "需要开启javascript", "请求过于频繁", "访问受限", "滑动验证",
+    };
 
     /** 站内搜索的探测词（用户 2026-09-21 确认）。 */
     static final String SEARCH_WORD = "电影";
@@ -54,6 +83,11 @@ public final class AiSiteProbe {
 
     private static final Pattern SCRIPT_SRC = Pattern.compile(
             "<script\\b[^>]*?src\\s*=\\s*[\"']([^\"']+)[\"']", Pattern.CASE_INSENSITIVE);
+
+    /** 内联脚本正文（没有 src 的 script 标签）。 */
+    private static final Pattern SCRIPT_BODY = Pattern.compile(
+            "<script\\b(?![^>]*\\bsrc\\s*=)[^>]*>(.*?)</script>",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     private static final Pattern MEDIA = Pattern.compile(
             "(https?://[^\"'\\s<>\\\\]{0,300}?\\.(?:m3u8|mp4)[^\"'\\s<>\\\\]*)", Pattern.CASE_INSENSITIVE);
@@ -184,6 +218,12 @@ public final class AiSiteProbe {
 
     /** 探测一个站点。不抛异常：失败信息放在 {@link Result#getError()} 里。 */
     public static Result probe(final String target) {
+        return probe(target, AiSiteProgress.NONE);
+    }
+
+    /** 探测一个站点，并实时回报进度。 */
+    public static Result probe(final String target, final AiSiteProgress progress) {
+        AiSiteProgress step = progress == null ? AiSiteProgress.NONE : progress;
         Result result = new Result();
         result.target = AiSite.normalize(target);
         if (!AiSite.isHttpUrl(result.target)) {
@@ -191,66 +231,129 @@ public final class AiSiteProbe {
             return result;
         }
         int[] budget = {MAX_FETCH};
-        String home = fetch(result.target, budget);
+        String ua = "";
+        String home = "";
+        for (int i = 0; i < Math.min(MAX_UA, USER_AGENTS.length); i++) {
+            step.step("用「" + UA_NAMES[i] + "」打开首页");
+            String raw = fetchRaw(result.target, budget, USER_AGENTS[i]);
+            if (!raw.isEmpty() && !blocked(raw)) {
+                home = raw;
+                ua = USER_AGENTS[i];
+                break;
+            }
+            step.step(raw.isEmpty()
+                    ? "这个 User-Agent 没拿到内容"
+                    : "这个 User-Agent 被拦了（疑似需要验证）");
+        }
         if (home.isEmpty()) {
-            result.error = "打不开这个网站：" + result.target;
+            result.error = "打不开这个网站：" + result.target + "（已换 " + Math.min(MAX_UA, USER_AGENTS.length) + " 个 User-Agent）";
             return result;
         }
+        step.step("首页已抓到 " + home.length() + " 字节");
         result.samples.add(new Sample(ROLE_HOME, result.target, trim(home)));
         List<Link> homeLinks = links(home, result.target);
+        step.step("首页解析出 " + homeLinks.size() + " 个链接");
 
         Link category = pickCategory(homeLinks, result.target);
         if (category != null) {
-            String body = fetch(category.url, budget);
+            step.step("抓分类页：" + category.url);
+            String body = fetch(category.url, budget, ua);
             if (!body.isEmpty()) {
                 result.samples.add(new Sample(ROLE_CATEGORY, category.url, trim(body)));
-                probeDetail(result, body, category.url, budget);
+                probeDetail(result, body, category.url, budget, ua, step);
+            } else {
+                step.step("分类页没抓到内容");
             }
+        } else {
+            step.step("首页里没找到分类入口");
         }
 
         String template = searchUrl(home, result.target);
         if (!template.isEmpty()) {
             String url = template.replace("{wd}", encode(SEARCH_WORD));
-            String body = fetch(url, budget);
+            step.step("抓站内搜索：" + url);
+            String body = fetch(url, budget, ua);
             if (!body.isEmpty()) {
                 result.searchTemplate = template;
                 result.samples.add(new Sample(ROLE_SEARCH, url, trim(body)));
+            } else {
+                step.step("搜索页没抓到内容");
             }
+        } else {
+            step.step("没找到站内搜索入口（该项接下来记「不适用」）");
         }
 
-        if (textOf(home).length() < 200 || homeLinks.size() < 5) {
-            String script = firstScript(home, result.target);
-            if (!script.isEmpty()) {
-                String body = fetch(script, budget);
-                if (!body.isEmpty()) result.samples.add(new Sample(ROLE_SCRIPT, script, trim(body)));
-            }
+        if (homeLinks.size() < 3 || textOf(home).length() < 200) {
+            step.step("页面像前端空壳，开始翻脚本找真接口");
+            probeScripts(result, home, result.target, budget, ua, step);
         }
 
-        if (result.samples.size() < 2) {
+        if (result.samples.size() < 2 && homeLinks.isEmpty()) {
             result.error = "这个网站没有抓到可用的页面结构";
         }
         return result;
     }
 
-    private static void probeDetail(final Result result, final String listBody, final String listUrl, final int[] budget) {
+    /** 空壳页面（SPA）的补救：把内联脚本与脚本包正文一起交给 AI 找后端接口。 */
+    private static void probeScripts(final Result result, final String html, final String base,
+                                     final int[] budget, final String ua, final AiSiteProgress step) {
+        for (Sample inline : inlineScripts(html, base)) {
+            result.samples.add(inline);
+            step.step("收下内联脚本 " + inline.getBody().length() + " 字节");
+        }
+        int taken = 0;
+        for (String url : scriptUrls(html, base, MAX_SCRIPT)) {
+            if (taken >= MAX_SCRIPT) break;
+            step.step("抓脚本包：" + url);
+            String body = fetch(url, budget, ua);
+            if (body.isEmpty()) {
+                step.step("脚本包没抓到内容");
+                continue;
+            }
+            result.samples.add(new Sample(ROLE_SCRIPT, url, trim(body)));
+            taken++;
+        }
+    }
+
+    private static void probeDetail(final Result result, final String listBody, final String listUrl,
+                                    final int[] budget, final String ua, final AiSiteProgress step) {
         Link detail = pickDetail(links(listBody, listUrl), listUrl);
-        if (detail == null) return;
-        String body = fetch(detail.url, budget);
-        if (body.isEmpty()) return;
+        if (detail == null) {
+            step.step("分类页里没找到详情入口");
+            return;
+        }
+        step.step("抓详情页：" + detail.url);
+        String body = fetch(detail.url, budget, ua);
+        if (body.isEmpty()) {
+            step.step("详情页没抓到内容");
+            return;
+        }
         result.samples.add(new Sample(ROLE_DETAIL, detail.url, trim(body)));
 
         String media = firstMedia(body);
         if (media.isEmpty()) {
             Link play = pickPlay(links(body, detail.url), detail.url);
-            if (play == null) return;
-            String playBody = fetch(play.url, budget);
-            if (playBody.isEmpty()) return;
+            if (play == null) {
+                step.step("详情页里没找到播放入口，也没看到 m3u8/mp4");
+                return;
+            }
+            step.step("抓播放页：" + play.url);
+            String playBody = fetch(play.url, budget, ua);
+            if (playBody.isEmpty()) {
+                step.step("播放页没抓到内容");
+                return;
+            }
             result.samples.add(new Sample(ROLE_PLAY, play.url, trim(playBody)));
             media = firstMedia(playBody);
         }
-        if (media.isEmpty()) return;
+        if (media.isEmpty()) {
+            step.step("没找到播放地址");
+            return;
+        }
         result.playUrl = media;
-        result.playConfirmed = isMedia(fetch(media, budget), media);
+        step.step("确认播放地址：" + media);
+        result.playConfirmed = isMedia(fetch(media, budget, ua), media);
+        step.step(result.playConfirmed ? "播放地址可访问" : "播放地址没确认下来（可能是需要 referer 或已失效）");
     }
 
     // ---------------------------------------------------------------- 交给 AI
@@ -346,18 +449,6 @@ public final class AiSiteProbe {
         return matcher.find() ? matcher.group(1) : "";
     }
 
-    private static String firstScript(final String html, final String base) {
-        Matcher matcher = SCRIPT_SRC.matcher(html == null ? "" : html);
-        String fallback = "";
-        while (matcher.find()) {
-            String url = AiSite.resolve(base, matcher.group(1).trim());
-            if (!AiSite.isHttpUrl(url)) continue;
-            if (sameHost(url, base)) return url;
-            if (fallback.isEmpty()) fallback = url;
-        }
-        return fallback;
-    }
-
     /** 从首页的表单或搜索链接推导搜索模板；找不到返回空串（站内搜索记为「不适用」）。 */
     private static String searchUrl(final String html, final String base) {
         String text = html == null ? "" : html;
@@ -408,15 +499,72 @@ public final class AiSiteProbe {
 
     // ---------------------------------------------------------------- 工具
 
-    private static String fetch(final String url, final int[] budget) {
+    private static String fetch(final String url, final int[] budget, final String ua) {
+        String body = fetchRaw(url, budget, ua);
+        return blocked(body) ? "" : body;
+    }
+
+    /** 取原始正文（可能是拦截页），由调用方决定是否当作失败。 */
+    private static String fetchRaw(final String url, final int[] budget, final String ua) {
         if (budget[0] <= 0) return "";
         budget[0]--;
         try {
-            String body = OkHttp.string(url, TIMEOUT);
+            java.util.Map<String, String> headers = new java.util.HashMap<>();
+            if (ua != null && !ua.isEmpty()) headers.put("User-Agent", ua);
+            headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            headers.put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+            String body = OkHttp.string(url, headers, TIMEOUT);
             return body == null ? "" : body;
         } catch (Throwable e) {
             return "";
         }
+    }
+
+    /** 内容像拦截页/验证页时视为没抓到，交给换 UA 重试。 */
+    private static boolean blocked(final String body) {
+        if (body == null) return true;
+        if (body.trim().isEmpty()) return true;
+        if (body.length() > 8192) return false;
+        String lower = body.toLowerCase(Locale.ROOT);
+        for (String word : BLOCKED_WORDS) {
+            if (lower.contains(word)) return true;
+        }
+        return false;
+    }
+
+    /** 外链脚本包，同域的排前面。 */
+    private static List<String> scriptUrls(final String html, final String base, final int max) {
+        List<String> out = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        Matcher matcher = SCRIPT_SRC.matcher(html == null ? "" : html);
+        while (matcher.find()) {
+            String url = AiSite.resolve(base, matcher.group(1).trim());
+            if (!AiSite.isHttpUrl(url) || !seen.add(url) || isInlineUrl(url)) continue;
+            if (sameHost(url, base)) out.add(0, url);
+            else out.add(url);
+        }
+        return out.subList(0, Math.min(max, out.size()));
+    }
+
+    private static boolean isInlineUrl(final String url) {
+        return url.startsWith("data:") || url.startsWith("javascript:") || url.startsWith("blob:");
+    }
+
+    /** 内联脚本：SPA 常把接口地址与签名逻辑写在这里，不用发请求就能拿到。 */
+    private static List<Sample> inlineScripts(final String html, final String base) {
+        List<Sample> out = new ArrayList<>();
+        if (html == null) return out;
+        Matcher matcher = SCRIPT_BODY.matcher(html);
+        int index = 0;
+        while (matcher.find() && out.size() < 2) {
+            String body = matcher.group(1);
+            if (body == null) continue;
+            body = body.trim();
+            if (body.length() < 40 || body.length() > MAX_BODY) continue;
+            index++;
+            out.add(new Sample(ROLE_SCRIPT, base + "#inline-" + index, body));
+        }
+        return out;
     }
 
     private static boolean isMedia(final String body, final String url) {

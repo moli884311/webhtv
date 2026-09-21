@@ -250,7 +250,7 @@ public class AiSiteDialog extends BaseAlertDialog {
         if (AiSite.looksLikeApi(target)) return done(addOne(probeSite(target)));
 
         status(R.string.ai_site_step_probe);
-        AiSiteProbe.Result probe = AiSiteProbe.probe(target);
+        AiSiteProbe.Result probe = AiSiteProbe.probe(target, this::status);
         if (probe == null) return ResUtil.getString(R.string.ai_site_add_fail, "");
         JSONObject shortcut = AiSite.fromHomepageHtml(target, probe.homeBody());
         if (shortcut != null) return done(addOne(shortcut));
@@ -263,7 +263,7 @@ public class AiSiteDialog extends BaseAlertDialog {
         String model = AiSiteSetting.getModel();
 
         status(R.string.ai_site_step_write);
-        JSONObject written = AiSiteClient.writeSpider(target, samples, url, key, model);
+        JSONObject written = AiSiteClient.writeSpider(target, samples, url, key, model, this::status);
         if (!written.optBoolean("ok")) return ResUtil.getString(R.string.ai_site_source_fail, written.optString("error"));
 
         String host = hostName(target);
@@ -272,15 +272,15 @@ public class AiSiteDialog extends BaseAlertDialog {
         if (api.isEmpty()) return ResUtil.getString(R.string.ai_site_source_fail, "");
 
         status(R.string.ai_site_step_check);
-        JSONObject tested = AiSiteSelfTest.verify(id, api, "{}", "", probe.isSearchable());
+        JSONObject tested = AiSiteSelfTest.verify(id, api, "{}", "", probe.isSearchable(), this::status);
         if (!tested.optBoolean("ok")) {
             status(R.string.ai_site_step_repair);
             JSONObject repaired = AiSiteClient.writeSpider(target, samples, url, key, model,
-                    written.optString("source"), tested.optString("step") + "：" + tested.optString("error"));
+                    written.optString("source"), tested.optString("step") + "：" + tested.optString("error"), this::status);
             if (!repaired.optBoolean("ok")) return ResUtil.getString(R.string.ai_site_source_fail, repaired.optString("error"));
             String again = stage(id, repaired, 2);
             if (again.isEmpty()) return ResUtil.getString(R.string.ai_site_source_fail, "");
-            tested = AiSiteSelfTest.verify(id + "#2", again, "{}", "", probe.isSearchable());
+            tested = AiSiteSelfTest.verify(id + "#2", again, "{}", "", probe.isSearchable(), this::status);
             if (!tested.optBoolean("ok")) {
                 return ResUtil.getString(R.string.ai_site_source_fail, tested.optString("step") + "：" + tested.optString("error"));
             }

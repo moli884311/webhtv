@@ -48,6 +48,14 @@ public final class AiSiteSelfTest {
      * @return `{"ok":true,"steps":[...]}` 或 `{"ok":false,"step":"...","error":"..."}`
      */
     public static JSONObject verify(final String key, final String api, final String ext, final String jar, final boolean searchable) {
+        return verify(key, api, ext, jar, searchable, AiSiteProgress.NONE);
+    }
+
+    /** 同 {@link #verify(String, String, String, String, boolean)}，并实时回报自检到哪一步。 */
+    public static JSONObject verify(final String key, final String api, final String ext, final String jar,
+                                    final boolean searchable, final AiSiteProgress progress) {
+        AiSiteProgress reporter = progress == null ? AiSiteProgress.NONE : progress;
+        reporter.step("自检：加载这个源");
         Spider spider;
         try {
             spider = BaseLoader.get().getSpider(key, api, ext, jar);
@@ -55,13 +63,20 @@ public final class AiSiteSelfTest {
             return fail(LOAD, e);
         }
         if (spider == null || spider instanceof SpiderNull) return fail(LOAD, new IllegalStateException("源加载失败（语法错误或依赖缺失）"));
-        return check(spider, searchable);
+        return check(spider, searchable, reporter);
     }
 
     /** 只跑内容契约，便于单测注入替身 Spider。 */
     static JSONObject check(final Spider spider, final boolean searchable) {
+        return check(spider, searchable, AiSiteProgress.NONE);
+    }
+
+    /** 只跑内容契约，并逐步回报进度。 */
+    static JSONObject check(final Spider spider, final boolean searchable, final AiSiteProgress progress) {
+        AiSiteProgress reporter = progress == null ? AiSiteProgress.NONE : progress;
         JSONArray steps = new JSONArray();
         try {
+            reporter.step("自检：首页");
             JSONObject home = new JSONObject(spider.homeContent(false));
             JSONArray classes = home.optJSONArray("class");
             JSONArray homeList = home.optJSONArray("list");
@@ -72,6 +87,7 @@ public final class AiSiteSelfTest {
             String vodId = firstId(homeList, "vod_id");
             String detailId = vodId;
 
+            reporter.step("自检：分类页");
             JSONObject category = new JSONObject(spider.categoryContent(tid, "1", false, new HashMap<>()));
             JSONArray categoryList = category.optJSONArray("list");
             if (empty(categoryList)) return drop(steps, CATEGORY, "分类第一页取不到内容");
@@ -80,6 +96,7 @@ public final class AiSiteSelfTest {
 
             if (detailId.isEmpty()) return drop(steps, DETAIL, "没有可用的详情 id");
 
+            reporter.step("自检：详情页");
             List<String> ids = new ArrayList<>();
             ids.add(detailId);
             JSONObject detail = new JSONObject(spider.detailContent(ids));
@@ -92,12 +109,14 @@ public final class AiSiteSelfTest {
             if (!searchable) {
                 steps.put(skip(SEARCH));
             } else {
+                reporter.step("自检：站内搜索");
                 JSONObject search = new JSONObject(spider.searchContent(SEARCH_WORD, false));
                 JSONArray searchList = search.optJSONArray("list");
                 if (empty(searchList)) return drop(steps, SEARCH, "站内搜索「" + SEARCH_WORD + "」无结果");
                 steps.put(step(SEARCH, searchList.length()));
             }
 
+            reporter.step("自检：播放地址");
             String target = firstSegment(playUrl);
             if (target.isEmpty()) return drop(steps, PLAY, "播放列表里没有可用的播放地址");
             List<String> vip = new ArrayList<>();
@@ -109,6 +128,7 @@ public final class AiSiteSelfTest {
             if (probed.isEmpty()) return drop(steps, PLAY, "播放地址不是 m3u8/mp4：" + url);
             steps.put(step(PLAY, probed));
 
+            reporter.step("自检通过");
             JSONObject result = new JSONObject();
             result.put("ok", true);
             result.put("steps", steps);

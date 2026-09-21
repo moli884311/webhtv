@@ -422,7 +422,7 @@ public final class AiSiteClient {
      */
     public static JSONObject writeSpider(final String targetUrl, final String samples, final String apiUrl,
                                          final String key, final String model) {
-        return writeSpider(targetUrl, samples, apiUrl, key, model, "", "");
+        return writeSpider(targetUrl, samples, apiUrl, key, model, "", "", AiSiteProgress.NONE);
     }
 
     /**
@@ -433,6 +433,20 @@ public final class AiSiteClient {
      */
     public static JSONObject writeSpider(final String targetUrl, final String samples, final String apiUrl,
                                          final String key, final String model, final String previous, final String reason) {
+        return writeSpider(targetUrl, samples, apiUrl, key, model, previous, reason, AiSiteProgress.NONE);
+    }
+
+    /** 首轮写源，并实时回报「正在写/正在修」的进度。 */
+    public static JSONObject writeSpider(final String targetUrl, final String samples, final String apiUrl,
+                                         final String key, final String model, final AiSiteProgress progress) {
+        return writeSpider(targetUrl, samples, apiUrl, key, model, "", "", progress);
+    }
+
+    /** 写源（含修正轮）的完整实现；{@code progress} 为 null 时等价于不回报进度。 */
+    public static JSONObject writeSpider(final String targetUrl, final String samples, final String apiUrl,
+                                         final String key, final String model, final String previous, final String reason,
+                                         final AiSiteProgress progress) {
+        AiSiteProgress step = progress == null ? AiSiteProgress.NONE : progress;
         if (!AiSite.isHttpUrl(apiUrl)) return failure("AI 接口地址无效");
         if (key == null || key.trim().isEmpty()) return failure("请先填写 AI Key");
         if (!AiSite.isHttpUrl(targetUrl)) return failure("目标网站地址无效");
@@ -446,8 +460,12 @@ public final class AiSiteClient {
         } catch (Throwable e) {
             return failure("请求构造失败");
         }
+        boolean repairEntry = previous != null && !previous.trim().isEmpty();
         for (int attempt = 0; attempt <= RETRY; attempt++) {
             String content = "";
+            step.step(attempt == 0
+                    ? (repairEntry ? "带着上一版的失败原因让 AI 重写" : "把探测样本发给 AI 写第一版源")
+                    : "AI 正在按失败原因重写（第 " + (attempt + 1) + " 次）");
             try {
                 String body = post(endpoint, secret, payload);
                 content = extractContent(body);
@@ -457,7 +475,10 @@ public final class AiSiteClient {
                     if (!hint.isEmpty()) lastError = lastError + "：" + hint;
                 } else {
                     JSONObject parsed = parseSpider(content);
-                    if (parsed.optBoolean("ok")) return parsed;
+                    if (parsed.optBoolean("ok")) {
+                        step.step("AI 给出一份 " + parsed.optString("lang") + " 源，开始本机自检");
+                        return parsed;
+                    }
                     lastError = parsed.optString("error", "AI 返回的内容不是 Spider 源");
                 }
             } catch (HttpError e) {
@@ -466,6 +487,7 @@ public final class AiSiteClient {
                 lastError = redact(e.getClass().getSimpleName() + "：" + e.getMessage(), secret);
             }
             if (attempt >= RETRY) break;
+            step.step("这一版没通过，准备带着原因让 AI 再写一次");
             try {
                 payload = buildSpiderRetryPayload(model, targetUrl, samples, content, lastError).toString();
             } catch (Throwable e) {

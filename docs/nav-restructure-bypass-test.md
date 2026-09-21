@@ -845,3 +845,35 @@ binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
 - 交付记录：CI run `35559451141` success；产物 package `com.fongmi.android.tvceshi` / versionCode `65` / versionName `1.0.64`，minSdk 24 / targetSdk 28，SHA256 `673f80db1bae4ad7b01a2b152636ca495f442ba4e359781ac474a1db7bf005db`（141419871 字节），已上传 `https://tvbox.moliys.icu/apk/tvbox-moliys-bypass-test-1.0.64.apk`（HTTP 206）
 - 恢复标签：`recovery/F1-autosite-r2f/20260921113953-80856af85b31`、`recovery/F1-autosite-r2f-fix1/20260921120018-cb7ecba754f6`
 - 待办：真机验收「随便一个影视站 → 生成可跑源」全链路（探测样本→写源→自检→落盘→进站可播）；验收通过后按 §8 S6 复制 F1 到其余 5 个版本
+
+## 30. F1 写源实时进度 + 探测多 UA 重试（1.0.65，未打包）
+
+1.0.64 真机复验反馈两件事：①普通影视站仍然建不出来（检测不出结构或抓不到内容），且写源过程是黑盒，不知道 AI 卡在哪一步；②用户怀疑「没结构」是 UA 被拦。本版只做这两点，不扩范围。
+
+### 写源实时进度
+
+- 新增 `AiSiteProgress`（`step(String)` + 空实现 `NONE`），探测/写源/自检三层都接受它并把「现在正在干什么」逐条回报。
+- `AiSiteProbe`：`用「桌面 Chrome」打开首页` → `首页已抓到 N 字节` → `首页解析出 N 个链接` → `抓分类页`/`抓详情页`/`抓站内搜索` → `确认播放地址`；无分类/无搜索入口时明确说「没找到…（该项接下来记「不适用」）」。
+- `AiSiteClient.writeSpider`：`把探测样本发给 AI 写第一版源` → `AI 给出一份 py 源，开始本机自检`；修正轮入口显示 `带着上一版的失败原因让 AI 重写`，重试显示 `AI 正在按失败原因重写（第 2 次）`。
+- `AiSiteSelfTest`：`自检：加载这个源` → `自检：首页/分类页/详情页/站内搜索/播放地址` → `自检通过`；失败时进度停在出错那一步。
+- 对话框把 `status(String)` 直接作为进度接收器（`this::status`，内部已切主线程），原有的分阶段标题文案保留在每阶段开始时先显示一次。
+
+### 探测多 UA 重试
+
+- 首页请求改为按 4 个 User-Agent 依次尝试：桌面 Chrome → 移动 Chrome → Android TV → iOS Safari；命中拦截页（Cloudflare 验证、403、`人机验证`、`请开启javascript` 等短页面特征）或空响应时换下一个，并把尝试过的 UA 名称写进进度（抓不到正文记「没拿到内容」，抓到拦截页记「被拦了（疑似需要验证）」，两者区分开）。
+- 换 UA 成功后，分类/详情/播放/搜索/脚本所有后续请求复用命中的那个 UA。
+- 请求预算从 7 提到 12（首页最多 4 次换 UA + 分类/详情/播放/播放确认/搜索各 1 + 脚本包最多 2 + 余量）。
+- 空壳页面（首页链接 < 3 或可见文本 < 200 字）额外采集：最多 2 段内联脚本 + 最多 2 个外链脚本包（同域优先），给 AI 更多「真接口在哪」的线索。
+
+### 校验
+
+- 本地 harness 累计 224 断言全过：r2a 49、r2b 46（新增换 UA 命中、UA 被拦提示、打不开时逐 UA 留痕、后续请求复用 UA、6 类进度步骤齐全）、r2c 54（新增写源/修正轮进度文案）、r2d 47（新增自检逐步进度与失败停在出错步）、r2e 28。
+- `check-moliys.sh` 编译检查 0 错误、0 受检异常错误（含新文件 `AiSiteProgress.java`）。
+- `AiSiteDialog` 编辑前后 `javac` 错误直方图完全一致（仅缺 androidx/`R` 符号），无新增语法级错误。
+- 原生编译由 fork CI 验证；真机验收在本版进行。
+
+### 交付记录（1.0.65，待打包）
+
+- 改动文件：`AiSiteProgress.java`（新增）、`AiSiteProbe.java`、`AiSiteClient.java`、`AiSiteSelfTest.java`、`AiSiteDialog.java` 与本文档；未改 site-src，站点版本维持 3.0.40。
+- 待办：升版本 1.0.65 / code 66 → fork CI → 下载校验 → 上传 → 真机复验「多 UA 下能建站」与「进度实时可见」。
+- 已知风险（受跟踪，未处理）：三层进度文案目前是硬编码简体中文，与 F1 既有运行时错误文案口径一致，英文/繁体界面下会显示简体。
