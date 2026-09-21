@@ -450,6 +450,14 @@
 7. `playerContent("", "", 播放列表首项)` → 得到 `url`，**实际请求一次确认为 m3u8/mp4**
 8. 任一步骤抛异常/超时 → 记错误文本，回灌 LLM 修 1 轮后重跑；仍失败 → 报「做不出来」，不落盘
 
+**实现口径（`AiSiteSelfTest`，S6-r2d 定案）**：
+
+- **加载**：直接调 `BaseLoader.get().getSpider(key, api, ext, jar)`，即用户点进站点时的同一条路径；`api` 由 `CustomCspSetting.Item.site()` 转成 `http://127.0.0.1:<port>/file/TV/CustomCsp/<id>/<name>`，因此 PyLoader/QuickJS 都按「HTTP 下载」分支工作（Chaquopy `app.py download()` 只在 `http` 前缀时下载，`file://` 原文会被当成源码字符串，故不能直接用 `file://` 调加载器）。加载器内部已调 `getDependence`/`init`，自检不再重复。
+- **第 1 步放宽**：首页 `list` 为空但 `class` 非空时算通过（部分源首页只给分类）；此时详情 id 改从分类第一页首项取。
+- **第 5 步取首段**：`vod_play_url` 先按 `$$$` 合流成 `#`，取**第一段**再取 `$` 后的地址；整串无 `$`（裸地址）也按有效地址处理。
+- **第 7 步确认顺序**：响应体以 `#EXTM3U` 开头 → `m3u8`；地址含 `.m3u8` / `.mp4` → 对应类型；否则回退 `spider.isVideoFormat(url)`，都不满足则判失败（文案明示「不是 m3u8/mp4」）。
+- **加载失败**：加载器抛异常或返回 `SpiderNull` → 直接失败于 `load` 步，文案提示「语法错误或依赖缺失」。
+
 ### 12.7 对既有 F1 代码的处置
 
 | 文件 | 处置 |
@@ -496,6 +504,6 @@
 | S6-r2a | 落盘/注入改造：`AiSite` 改用 `CustomCspSetting` 注册表，删除 `activate()`/`configUri()`/分组配置 | **已完成**（本地 harness 49 断言全过；`reloadConfigs()` 重载当前配置而非切换配置；maccms 捷径保留可用） |
 | S6-r2b | 探针：`AiSiteProbe`（首页/分类/详情/播放/搜索 + SPA 抓 JS） | **已完成**（`AiSiteProbe.java`；请求预算 7 次含 1 次播放地址确认；本地 HttpServer 端到端 25 断言全过，r2a 回归 49 断言全过） |
 | S6-r2c | 写源：`AiSiteClient.writeSpider(targetUrl, samples, apiUrl, key, model)` + system 契约注入 + 语言标记解析 | **已完成**（`writeSpider`/`parseSpider`/`guessLang`/`spiderSystemPrompt`/`spiderUserPrompt`/`buildSpiderPayload`/`buildSpiderRetryPayload`；纯文本模式不再发 `response_format`；本地 mock AI 端点端到端 41 断言全过，含「首轮不合格→回灌重试 1 轮→仍不合格判失败」与「Key 不进请求体」） |
-| S6-r2d | 自检：`AiSiteSelfTest`（`BaseLoader.get().getSpider` 同路径加载并跑 §12.6 契约） | 待开始 |
+| S6-r2d | 自检：`AiSiteSelfTest`（`BaseLoader.get().getSpider` 同路径加载并跑 §12.6 契约） | **已完成**（`AiSiteSelfTest.verify(key,api,ext,jar,searchable)` / `check(Spider,searchable)`；加载失败与 `SpiderNull` 均判失败；5 步契约逐步留痕；本地替身 Spider 39 断言全过） |
 | S6-r2e | `AiSiteDialog` 串联四步 + 进度/失败提示 + i18n | 待开始 |
 | S6-r2f | 版本 1.0.64 → CI → 下载校验 → 上传 → 真机复验 | 待开始 |
