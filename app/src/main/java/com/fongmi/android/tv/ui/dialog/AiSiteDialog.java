@@ -42,9 +42,10 @@ import java.util.List;
 /**
  * 「AI 自动站点」面板：输入一个网站地址，识别出可用的采集接口并加入站点列表。
  *
- * <p>识别顺序按 D7 探测优先：先看输入本身是不是接口，再看是不是完整配置，再从首页 HTML 里找线索，
+ * <p>识别顺序按 D7 探测优先：先看输入本身是不是接口，再从首页 HTML 里找线索，
  * 都不命中且用户已配置 AI 时才把页面内容发给模型。只有探测与 AI 都失败才报错，
- * 且任何失败都不会改动已有的站点配置。
+ * 且任何失败都不会改动已有的站点配置。站点识别成功后会把该分组设为当前接口配置，
+ * 否则新站点不会出现在影视主页的站源列表里。
  */
 public class AiSiteDialog extends BaseAlertDialog {
 
@@ -54,6 +55,7 @@ public class AiSiteDialog extends BaseAlertDialog {
     private SiteAdapter adapter;
     private Runnable callback;
     private boolean running;
+    private boolean changed;
 
     public static void show(Fragment fragment) {
         show(fragment, null);
@@ -186,9 +188,12 @@ public class AiSiteDialog extends BaseAlertDialog {
             Notify.show(R.string.ai_site_delete_fail);
             return;
         }
-        refreshSites();
-        Notify.show(R.string.ai_site_deleted);
-        if (callback != null) callback.run();
+        changed = true;
+        AiSite.activate(App.get(), () -> App.post(() -> {
+            refreshSites();
+            Notify.show(R.string.ai_site_deleted);
+            if (callback != null) callback.run();
+        }));
     }
 
     // ---------------------------------------------------------------- 识别（D7）
@@ -205,6 +210,7 @@ public class AiSiteDialog extends BaseAlertDialog {
             return;
         }
         persistFields();
+        changed = false;
         running = true;
         updateActions();
         Notify.show(R.string.ai_site_running);
@@ -216,21 +222,29 @@ public class AiSiteDialog extends BaseAlertDialog {
                 message = ResUtil.getString(R.string.ai_site_add_fail, brief(e));
             }
             String output = message;
-            App.post(() -> {
-                running = false;
-                updateActions();
-                refreshSites();
-                Notify.show(output);
-                if (callback != null) callback.run();
-            });
+            App.post(() -> finishRecognize(output));
         });
+    }
+
+    /** 识别结束后收尾：只有真的加了站点才切换当前接口配置，否则不打扰用户已有的配置。 */
+    private void finishRecognize(final String message) {
+        running = false;
+        updateActions();
+        if (!changed) {
+            Notify.show(message);
+            if (callback != null) callback.run();
+            return;
+        }
+        AiSite.activate(App.get(), () -> App.post(() -> {
+            refreshSites();
+            Notify.show(message);
+            if (callback != null) callback.run();
+        }));
     }
 
     /** 返回给用户看的一句话结果。 */
     private String recognize(final String target) {
         if (AiSite.looksLikeApi(target)) return addOne(probeSite(target));
-        JSONArray config = AiSite.parseConfigText(target);
-        if (config != null) return importConfig(config);
         String html = fetch(target);
         JSONObject homepage = AiSite.fromHomepageHtml(target, html);
         if (homepage != null) return addOne(homepage);
@@ -258,16 +272,8 @@ public class AiSiteDialog extends BaseAlertDialog {
     private String addOne(final JSONObject site) {
         if (site == null) return ResUtil.getString(R.string.ai_site_add_fail, "");
         String error = AiSite.addSite(App.get(), site);
+        if (error.isEmpty()) changed = true;
         return error.isEmpty() ? ResUtil.getString(R.string.ai_site_added_ok) : ResUtil.getString(R.string.ai_site_add_fail, error);
-    }
-
-    private String importConfig(final JSONArray sites) {
-        int added = 0;
-        for (int i = 0; i < sites.length(); i++) {
-            JSONObject site = sites.optJSONObject(i);
-            if (site != null && AiSite.addSite(App.get(), site).isEmpty()) added++;
-        }
-        return added == 0 ? ResUtil.getString(R.string.ai_site_add_fail, "") : ResUtil.getString(R.string.ai_site_imported, added);
     }
 
     private String fetch(final String url) {

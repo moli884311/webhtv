@@ -297,6 +297,7 @@ public final class AiSiteClient {
         String page = sanitizeHtml(html);
         if (page.isEmpty()) return failure("页面内容为空，无法识别");
         String secret = key.trim();
+        String endpoint = endpoint(apiUrl);
         String lastError = "";
         boolean jsonMode = true;
         String payload;
@@ -308,7 +309,7 @@ public final class AiSiteClient {
         for (int attempt = 0; attempt <= RETRY; attempt++) {
             String content = "";
             try {
-                String body = post(apiUrl, secret, payload);
+                String body = post(endpoint, secret, payload);
                 content = extractContent(body);
                 if (content.isEmpty()) {
                     lastError = "AI 未返回内容";
@@ -343,6 +344,16 @@ public final class AiSiteClient {
         return failure(lastError);
     }
 
+    /** 用户常只填服务根地址（如 {@code https://api.deepseek.com}），这里补全成 chat/completions 端点。 */
+    public static String endpoint(final String apiUrl) {
+        String text = apiUrl == null ? "" : apiUrl.trim();
+        while (text.endsWith("/")) text = text.substring(0, text.length() - 1);
+        String lower = text.toLowerCase(Locale.ROOT);
+        if (lower.endsWith("/chat/completions")) return text;
+        if (lower.endsWith("/v1")) return text + "/chat/completions";
+        return text + "/v1/chat/completions";
+    }
+
     /** 发送一次 chat/completions 请求，返回响应体原文。 */
     private static String post(final String apiUrl, final String key, final String payload) throws IOException {
         Map<String, String> headers = new HashMap<>();
@@ -361,7 +372,7 @@ public final class AiSiteClient {
             if (!response.isSuccessful()) {
                 String hint = errorOf(text);
                 if (hint.isEmpty()) hint = text.trim();
-                throw new HttpError(response.code(), redact(hint, key));
+                throw new HttpError(response.code(), apiUrl, redact(hint, key));
             }
             return text;
         }
@@ -382,8 +393,8 @@ public final class AiSiteClient {
 
         final String body;
 
-        HttpError(final int code, final String body) {
-            super("AI 接口返回 HTTP " + code + (body == null || body.isEmpty() ? "" : "：" + body));
+        HttpError(final int code, final String url, final String body) {
+            super("AI 接口返回 HTTP " + code + "（请求 " + url + "）" + (body == null || body.isEmpty() ? "" : "：" + body));
             this.code = code;
             this.body = body == null ? "" : body;
         }

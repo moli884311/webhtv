@@ -2,6 +2,9 @@ package com.moliys.tvbox;
 
 import android.content.Context;
 
+import com.fongmi.android.tv.api.config.VodConfig;
+import com.fongmi.android.tv.bean.Config;
+import com.fongmi.android.tv.impl.Callback;
 import com.github.catvod.net.OkHttp;
 
 import org.json.JSONArray;
@@ -175,18 +178,6 @@ public final class AiSite {
             site.put("type", TYPE_JSON);
             site.put("source", "probe");
             return site;
-        } catch (Throwable e) {
-            return null;
-        }
-    }
-
-    /** D7 步骤 3：输入本身是完整站点配置（形如 {@code {"sites":[...]}}）时取出其中的站点数组，否则返回 null。 */
-    public static JSONArray parseConfigText(final String text) {
-        String trimmed = text == null ? "" : text.trim();
-        if (!trimmed.startsWith("{")) return null;
-        try {
-            JSONArray sites = new JSONObject(trimmed).optJSONArray("sites");
-            return sites == null || sites.length() == 0 ? null : sites;
         } catch (Throwable e) {
             return null;
         }
@@ -373,6 +364,34 @@ public final class AiSite {
     /** 可交给 {@code Config.create(0, url, name)} 加载的本地地址。 */
     public static String configUri(final Context context) {
         return "file://" + new File(context.getFilesDir(), FILE_NAME).getAbsolutePath();
+    }
+
+    /**
+     * 把「AI 自动站点」分组设为当前接口配置，使其出现在影视主页的站源列表里。
+     *
+     * <p>与采集页「打开站点」走同一条路径（{@code Config.find} + {@code VodConfig.load}），因此需要在主线程调用，
+     * 且回调可能发生在任意线程。一个站点都没有时不切换配置，避免把主页清空。无论成功失败都会回调 {@code done}。
+     */
+    public static void activate(final Context context, final Runnable done) {
+        if (countSites(context) == 0) {
+            if (done != null) done.run();
+            return;
+        }
+        try {
+            VodConfig.load(Config.find(configUri(context), GROUP_NAME, 0), new Callback() {
+                @Override
+                public void success() {
+                    if (done != null) done.run();
+                }
+
+                @Override
+                public void error(String msg) {
+                    if (done != null) done.run();
+                }
+            });
+        } catch (Throwable e) {
+            if (done != null) done.run();
+        }
     }
 
     private static String readText(final File file) {
