@@ -127,6 +127,7 @@ public class App extends Application implements Application.ActivityLifecycleCal
 
     private void startBackgroundServices() {
         SpiderDebug.log("startup", "background services start cost=%sms", System.currentTimeMillis() - time);
+        com.moliys.tvbox.BuiltinLive.ensure();
         Server.get().start();
         PlaybackRemoteSyncer.start();
         RemoteAgent.get().start();

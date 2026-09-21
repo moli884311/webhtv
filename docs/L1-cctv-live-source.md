@@ -77,6 +77,31 @@
 - 服务端：`StartTask` 触发 id 410 → 日志 `/tmp/gen_live_cron.log` 显示 376 候选 / 88 可播 / 16 频道，耗时 89.8s。
 - 公网：`curl https://tvbox.moliys.icu/tvbox/live/央视.txt` → HTTP 200，`text/plain`，约 8KB，含 `更新时间` 行与 `央视频道,#genre#` 分组。
 
+## App 端内置（第 3 步）
+
+### 方案对比
+
+| 方案 | 说明 | 判定 |
+| --- | --- | --- |
+| 不改 | 用户需自己粘贴 URL | 不满足「内置」 |
+| 只在内存兜底（改 `LiveConfig.defaultConfig()`） | 不落库，直播页有内容 | 可行，但设置页仍显示「未配置」，用户看不到、也改不了当前源 |
+| 首次启动落库一次（本方案） | 无 `type=1` 记录时插入一条默认 | **采用**：设置页可见可改，且不会覆盖用户选择 |
+
+关键依据：`ConfigDao.findOne(1)` 是 `SELECT * FROM Config WHERE type=1 ORDER BY time DESC LIMIT 1`。
+默认记录写入时间最早，用户之后自选的源（含站点直播列表点「打开」，与 `MainActivity.openLiveSource` 同路径）时间更新，必然优先。因此落库不会产生「默认源盖住用户源」的问题，无需额外的「用户是否改过」标记。
+
+### 实现
+
+- 新增 `app/src/main/java/com/moliys/tvbox/BuiltinLive.java`：`ensure()` 在无 `type=1` 记录时 `Config.create(1, URL, "央视直播")`，异常吞掉不影响启动。
+- `App.startBackgroundServices()` 中调用（与 `Server.get().start()` 同批，已由 `post(..., 1200)` 延后到主线程空闲时）。
+- 默认地址用 ASCII 文件名 `https://tvbox.moliys.icu/tvbox/live/cctv.txt`，服务器同时保留 `央视.txt` 便于人工查看；两者由同一个计划任务写出。
+
+### 验证
+
+- 桩编译 `BuiltinLive.java`（`Config.create` / `ConfigDao.findOne` / `AppDatabase.getConfigDao` 均 public）通过。
+- 真机：清数据或首装后打开直播页应直接出现「央视频道」分组；随后在设置里换源，重进直播页应仍为用户所选。
+- 版本：1.0.66 / code 67。
+
 ## 已知限制
 
 - 官方 CDN 仅提供 CCTV-1、CCTV-13；CCTV-2..15、17 依赖移动 IPTV 等公开线路，单点稳定性弱于官方。
