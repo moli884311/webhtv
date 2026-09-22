@@ -8,7 +8,7 @@
   2. `applicationId` 保持 `com.moliys.tvbox`，`versionCode 72` / `versionName 1.0.71`。
   3. CI 构建成功；APK 上传；`version-moliys.js` 指向新包且 `force: true`。
 - 回滚：`git revert` 本次提交（或回到 `80e97696`，1.0.39/code40）；服务器清单备份 `version-moliys.js.bak-vc68-1071`。
-- 状态：**已完成**。
+- 状态：已完成（含通道拆分，见下）。
 
 ## 交付
 
@@ -45,3 +45,11 @@
   - 保留未删：`tvbox-moliys-1.0.71.apk` 仍在服务器 `apk/` 目录，但当前无任何清单指向它。
 - **待决策**：全功能版（`com.moliys.tvbox`）需要自己的更新通道。可选：(A) 改全功能版 `site.pak` 的 `UPDATE_MANIFEST_URL` 为独立清单（如 `version-full-official.js`）并重新出包；(B) 全功能版不做 OTA；(C) 继续共用一份清单。
 - 全功能版 `site.pak` 内站点仍为**旧 Telegram 链接**，本次未改。
+
+## 拆通道（用户选定方案 A，2026-09-22）
+
+- 改 `app/src/main/assets/site.pak` 内 `index.html` 的 `UPDATE_MANIFEST_URL`：
+  `version-moliys.js` → **`version-full-official.js`**，重新打包 site.pak。
+- 重打包口径：用 `过包名版本测试版/tools/repack_site.py --no-fetch`（不拉服务器数据）；
+  基线=改动前 pak，78 个条目逐个解密比对，**仅 `index.html` 一行不同**，其余字节一致；站点旧 TG 链接保持不变。
+- 服务器侧：新建 `version-full-official.js`（全功能版专属），`version-moliys.js` 保持过包名版本 code 68 不动。
