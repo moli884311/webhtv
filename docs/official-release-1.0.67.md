@@ -9,7 +9,42 @@
   3. CI 构建成功，产物 `versionCode 68` / `versionName 1.0.67`。
   4. 服务器 `version-moliys.js` 的 `versionCode`/`apkUrl`/`apkSize`/`apkSha256` 与新包实际值一致，`force: true`。
 - 回滚：正式版回到 `65f8c732`（1.0.39/code40），服务器清单从 `version-moliys.js.bak-vc40-1067` 还原。
-- 下一步（本文件提交后）：push `bypass-official` → CI → 下载校验 → 上传 APK → 更新清单。
+- 状态：**已发布**。CI `35675285056` success；APK 已上传；`version-moliys.js` 已指向新包并通过一致性校验。
+
+## 交付记录
+
+| 项 | 值 |
+| --- | --- |
+| 代码提交 | `61ef8e47`（移植 + 升版本，49 文件） |
+| 恢复标签 | `recovery/port-official-1067/20260922091805-61ef8e47474b` |
+| CI run | `35675285056` success（push `bypass-official` 触发） |
+| 产物 artifact | `moliys-bypass-official-arm64`（id `10673360521`） |
+| APK 路径 | `mobileArm64_v8a/release/mobile-arm64_v8a-bypass-official.apk` |
+| 包名 / 版本 | `com.fongmi.android.tv` / code `68` / `1.0.67` |
+| 大小 | 141419863 字节 |
+| SHA256 | `60a028628f8d9555d4c1b040412521246d7da9cec9ba6eedf267f9611b080fab` |
+| APK 公网地址 | `https://tvbox.moliys.icu/apk/tvbox-moliys-1.0.67.apk?v=68` |
+| 清单 | `apk/version-moliys.js`（`force: true`）；旧清单备份 `apk/version-moliys.js.bak-vc40-1067` |
+
+### 强制更新一致性校验（「不能有错」）
+
+| 校验 | 结果 |
+| --- | --- |
+| 本地 APK sha256 | `60a0286…0fab` |
+| 服务器 `sha256sum` | 同上，完全一致 |
+| 服务器文件大小 | 141419863 |
+| 清单 `apkSize` | 141419863（与文件一致） |
+| 清单 `apkSha256` / `sha256` | 与服务器一致 |
+| 公网清单可读 | HTTP 200，840 字节，BOM 保留，`versionCode 68` / `force true` |
+| 公网 APK HEAD | HTTP 200，`content-length: 141419863` |
+| 公网 APK 范围请求 | HTTP 206，1024 字节 |
+
+强更链路成立：旧用户 code 40 → 清单 68 → 站点弹「发现新版本，需升级后使用」→ 应用内下载校验 sha256 → 同包名同签名覆盖安装。
+
+## 回滚步骤
+
+1. 服务器：`cp -a apk/version-moliys.js.bak-vc40-1067 apk/version-moliys.js`（恢复 1.0.39 清单），按需删除 `apk/tvbox-moliys-1.0.67.apk`。
+2. 仓库：正式版 `git reset --hard 65f8c732`（或 revert `61ef8e47`）。
 
 ## 移植范围
 
