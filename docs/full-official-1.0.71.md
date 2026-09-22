@@ -14,13 +14,15 @@
 
 | 项 | 值 |
 |---|---|
-| commit | `60a03954` |
-| 恢复标签 | `recovery/full-del-video-btn-1071/20260922103602-60a039546e09` |
-| CI | run `35680154695` success |
-| artifact | `moliys-full-official-arm64`(id `10674181972`) |
-| APK | `com.moliys.tvbox` / code 72 / 1.0.71 / 141366243 B |
-| SHA256 | `93a9aef940fa3c3ccf37dde42f63bb94a88d142b64091099ce7dc88ddcdd8fb7` |
+| commit | `b3ec0977`（拆通道后重新出包的最终版本） |
+| CI | run `35686240033` success |
+| artifact | `moliys-full-official-arm64`(id `10677167067`) |
+| APK | `com.moliys.tvbox` / code 72 / 1.0.71 / 141366263 B |
+| SHA256 | `06cd24d15d673efcae95f703c98e09f054fe73489327ddfd4244d2a6b5d321fe` |
 | 下载 | `https://tvbox.moliys.icu/apk/tvbox-moliys-1.0.71.apk?v=72` |
+| 更新清单 | `https://tvbox.moliys.icu/apk/version-full-official.js`（全功能版专属） |
+
+> 过程记录：首次出包（commit `60a03954` / CI `35680154695` / SHA256 `93a9aef9…d8fb7` / 141366243 B）的 `site.pak` 仍指向共用清单 `version-moliys.js`，属于事故版本，已被上表构建覆盖（`tvbox-moliys-1.0.71.apk` 同名覆盖，从未分发）。
 
 
 ## 改动
@@ -38,7 +40,7 @@
 - 服务器：远端 `sha256sum` 与本地一致；公网 HEAD `content-length` 141366243；范围请求 206。
 - 清单：公网 `version-moliys.js` HTTP 200 / 452 B / 带 BOM，`versionCode 72`、`apkUrl` 指向 1.0.71、`force: true`。
 
-## 遗留（未处理，等指示）
+## 事故记录（已处理）
 
 - **事故与恢复（2026-09-22）**：本次把 `version-moliys.js` 改为全功能版口径（code 72），而**四个版本**（全功能正式/全功能测试/过包名正式/过包名测试）的 `site.pak` 内 `UPDATE_MANIFEST_URL` **全部指向同一个 `version-moliys.js`**，导致已完成交付的过包名版本（`com.fongmi.android.tv`，code 68）被强制提示更新到包名不符的 APK。
   - 已恢复：`cp -a version-moliys.js.bak-vc68-1071 version-moliys.js`，公网复核 HTTP 200 / 840 B / `versionCode 68` / `versionName 1.0.67` / `apkUrl` 指向 `tvbox-moliys-1.0.67.apk`。
@@ -52,4 +54,7 @@
   `version-moliys.js` → **`version-full-official.js`**，重新打包 site.pak。
 - 重打包口径：用 `过包名版本测试版/tools/repack_site.py --no-fetch`（不拉服务器数据）；
   基线=改动前 pak，78 个条目逐个解密比对，**仅 `index.html` 一行不同**，其余字节一致；站点旧 TG 链接保持不变。
-- 服务器侧：新建 `version-full-official.js`（全功能版专属），`version-moliys.js` 保持过包名版本 code 68 不动。
+- 服务器侧：新建 `version-full-official.js`（全功能版专属，code 72 / 1.0.71 / force true）；
+  `version-moliys.js` 保持过包名版本 code 68 不动。
+- 复核：全功能版清单 HTTP 200 / 452 B；过包名版本清单 HTTP 200 / 840 B 仍为 code 68；
+  远端 `sha256sum` 与清单 `apkSha256` 一致。
