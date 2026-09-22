@@ -34,12 +34,12 @@ import java.util.Locale;
  */
 public class DownloadActivity extends Activity {
 
-    private static final int BG = 0xFF0F1115;
-    private static final int CARD = 0xFF1A1E27;
-    private static final int TEXT = 0xFFE8ECF3;
-    private static final int SUB = 0xFF8A93A6;
-    private static final int ACCENT = 0xFF4C8DFF;
-    private static final int DANGER = 0xFFFF5A5F;
+    private static final int BG = 0xFF0D1420;
+    private static final int CARD = 0xFF141F31;
+    private static final int TEXT = 0xFFDBE6F2;
+    private static final int SUB = 0xFF8FA6C4;
+    private static final int ACCENT = 0xFF4A9EFF;
+    private static final int DANGER = 0xFFF87171;
 
     private LinearLayout listBox;
     private TextView pathView;

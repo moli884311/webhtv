@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
@@ -38,10 +39,12 @@ import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import com.fongmi.android.tv.BuildConfig;
+import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.impl.Callback;
+import com.fongmi.android.tv.setting.DanmakuSetting;
 
 import java.io.File;
 import java.util.List;
@@ -82,7 +85,7 @@ public class MainActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        root.setBackgroundColor(0xFF0F1115);
+        root.setBackgroundColor(MoliysTheme.shellBackground());
         rootView = root;
 
         webView = new WebView(this);
@@ -100,6 +103,7 @@ public class MainActivity extends Activity {
         setContentView(root);
 
         applyEdgeToEdge();
+        applyShellTheme();
         watchInsets(root);
         configureWebView();
 
@@ -212,6 +216,13 @@ public class MainActivity extends Activity {
         applyBarIcons(false);
     }
 
+    private void applyShellTheme() {
+        int bg = MoliysTheme.shellBackground();
+        if (rootView != null) rootView.setBackgroundColor(bg);
+        if (webView != null) webView.setBackgroundColor(bg);
+        applyBarIcons(MoliysTheme.isLight());
+    }
+
     private void applyBarIcons(boolean light) {
         Window w = getWindow();
         if (Build.VERSION.SDK_INT >= 30) {
@@ -302,7 +313,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 26) {
             s.setSafeBrowsingEnabled(false);
         }
-        webView.setBackgroundColor(0xFF0F1115);
+        webView.setBackgroundColor(MoliysTheme.shellBackground());
         webView.setHorizontalScrollBarEnabled(false);
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -590,6 +601,17 @@ public class MainActivity extends Activity {
             } catch (Throwable ignored) {
             }
         }
+        if (webView != null) {
+            LicenseManager.refresh(this, new LicenseManager.Callback() {
+                @Override
+                public void done(boolean changed) {
+                    if (changed) {
+                        injectVideoEntry(webView);
+                    }
+                    pushLicenseState(webView);
+                }
+            });
+        }
     }
 
     private void callJs(final String fn, final String... args) {
@@ -636,28 +658,98 @@ public class MainActivity extends Activity {
         return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
     }
 
-    /** 站点页内注入原生「影视」入口（仅 App 内生效，不影响网页端）。 */
+    /** 站点页内注入「关于」连点 6 次看授权面板（仅 App 内生效）。影视入口已改为底部标签，不再注入悬浮按钮。 */
     private void injectVideoEntry(WebView view) {
         if (view == null || BuildConfig.LITE_EDITION) {
             return;
         }
         final String js = "(function(){"
-                + "if(window.__moliysTvEntry){return;}"
-                + "window.__moliysTvEntry=true;"
-                + "function mk(txt,bottom,fn){"
-                + "var b=document.createElement('div');"
-                + "b.textContent=txt;"
-                + "b.style.cssText='position:fixed;right:16px;bottom:'+bottom+';z-index:2147483647;"
-                + "padding:10px 18px;border-radius:22px;color:#fff;font-size:15px;font-weight:600;"
-                + "background:linear-gradient(135deg,#1E6FEB,#7A4DFF);"
-                + "box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer;user-select:none';"
-                + "b.onclick=fn;"
-                + "(document.body||document.documentElement).appendChild(b);"
-                + "return b;}"
-                + "mk('影视','110px',function(){try{window.TVBoxNative.openVideo();}catch(e){}});"
+                + "if(window.__moliysLicTap){return;}"
+                + "window.__moliysLicTap=true;var n=0,t=0;"
+                + "document.addEventListener('click',function(e){"
+                + "var el=e.target;"
+                + "while(el&&el!==document){"
+                + "if(el.getAttribute&&el.getAttribute('data-tab')==='about'){break;}"
+                + "el=el.parentNode;}"
+                + "if(!el||el===document){return;}"
+                + "var now=Date.now();if(now-t>4000){n=0;}t=now;n++;"
+                + "if(n>=6){n=0;try{window.TVBoxNative.openLicense();}catch(err){}}"
+                + "},true);"
                 + "})();";
         try {
             view.evaluateJavascript(js, null);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 授权面板：显示设备码、状态与剩余时间；连点站点「关于」6 次触发。 */
+    private void showLicenseDialog() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final String code = LicenseManager.deviceCode(MainActivity.this);
+                boolean auth = LicenseManager.isAuthorized(MainActivity.this);
+                String status;
+                if (auth) {
+                    status = "已授权，剩余 " + formatRemain(LicenseManager.remainingSeconds(MainActivity.this));
+                } else if (LicenseManager.hasRecord(MainActivity.this)) {
+                    status = "授权已到期";
+                } else {
+                    status = "未授权";
+                }
+                String msg = "设备码：" + code
+                        + "\n状态：" + status
+                        + "\n\n把设备码发到群里，等待管理员回复";
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("影视功能授权")
+                        .setMessage(msg)
+                        .setPositiveButton("复制设备码", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                copyText(code);
+                            }
+                        })
+                        .setNegativeButton("刷新", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                LicenseManager.refresh(MainActivity.this, new LicenseManager.Callback() {
+                                    @Override
+                                    public void done(boolean changed) {
+                                        injectVideoEntry(webView);
+                                        Toast.makeText(MainActivity.this, "已刷新授权状态", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
+                        })
+                        .setNeutralButton("关闭", null)
+                        .show();
+            }
+        });
+    }
+
+    private static String formatRemain(long sec) {
+        if (sec <= 0) {
+            return "0 分钟";
+        }
+        long days = sec / 86400;
+        long hours = (sec % 86400) / 3600;
+        long mins = (sec % 3600) / 60;
+        if (days > 0) {
+            return days + " 天 " + hours + " 小时";
+        }
+        if (hours > 0) {
+            return hours + " 小时 " + mins + " 分";
+        }
+        return mins + " 分钟";
+    }
+
+    private void copyText(String text) {
+        try {
+            ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (cm != null) {
+                cm.setPrimaryClip(ClipData.newPlainText("设备码", text));
+                Toast.makeText(this, "设备码已复制", Toast.LENGTH_SHORT).show();
+            }
         } catch (Exception ignored) {
         }
     }
@@ -826,9 +918,9 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** 打开内置影视（webhtv 内核）首页。 */
+    /** 打开内置影视（webhtv 内核）首页，隐藏原生底部标签。 */
     private void openVideoHome() {
-        startFongmi("com.fongmi.android.tv.ui.activity.HomeActivity", null);
+        startFongmiNav("com.fongmi.android.tv.ui.activity.HomeActivity", 0, true);
     }
 
     /** 打开内置直播。 */
@@ -836,18 +928,183 @@ public class MainActivity extends Activity {
         startFongmi("com.fongmi.android.tv.ui.activity.LiveActivity", null);
     }
 
-    /** 以 ACTION_VIEW 交给 webhtv 内核导入接口（单仓/多仓 JSON 地址）。 */
-    private void openVideoInterface(final String url) {
-        if (url == null || url.length() == 0) {
+    /** 采集页「打开站点」：把采集接口以配置方式加载（苹果CMS XML/JSON），再用内置影视浏览。 */
+    private void openCaiSite(final String name, final String api) {
+        if (api == null || api.trim().length() == 0) {
             return;
         }
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "导入接口失败", Toast.LENGTH_SHORT).show();
+        final String siteName = (name == null || name.trim().length() == 0) ? api.trim() : name.trim();
+        final String siteApi = api.trim();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final int type = CaiSite.detectType(siteApi);
+                final String json = CaiSite.buildConfig(siteName, siteApi, type);
+                final String url = json.length() == 0 ? "" : CaiSite.write(MainActivity.this, json);
+                if (url.length() == 0) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this, "采集接口配置生成失败", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    return;
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Config cfg = Config.find(url, siteName, 0);
+                        VodConfig.load(cfg, new Callback() {
+                            @Override
+                            public void success() {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        openVideoHome();
+                                    }
+                                });
+                            }
+
+                            @Override
+                            public void error(String msg) {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Toast.makeText(MainActivity.this, "采集接口加载失败，请检查地址", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        }, "cai-site-open").start();
+    }
+
+    /** 直播页「打开」：把该直播源按配置方式加载，成功后直接进入内置直播播放界面。 */
+    private void openLiveSource(final String name, final String url) {
+        if (url == null || url.trim().length() == 0) {
+            return;
         }
+        final String cfgName = (name == null || name.trim().length() == 0) ? url.trim() : name.trim();
+        final String cfgUrl = url.trim();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Config cfg = Config.find(cfgUrl, cfgName, 1);
+                LiveConfig.load(cfg, new Callback() {
+                    @Override
+                    public void success() {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                openVideoLive();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void error(String msg) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "直播源加载失败，请检查地址", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    /** 打开内置影视并定位到「设置」页（HomeActivity 的 nav_position=1），隐藏原生底部标签。 */
+    private void openVideoSettings() {
+        startFongmiNav("com.fongmi.android.tv.ui.activity.HomeActivity", 1, true);
+    }
+
+    private void startFongmiNav(final String cls, final int position, final boolean hideNav) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Intent intent = new Intent();
+                    intent.setClassName(getPackageName(), cls);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    intent.putExtra("nav_position", position);
+                    intent.putExtra("hide_nav", hideNav);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "打开设置失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    /** 把最新授权状态推给站点页，用于隐藏/显示 影视主页、在线直播、设置。 */
+    private void pushLicenseState(final WebView view) {
+        if (view == null) {
+            return;
+        }
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final boolean ok = LicenseManager.isAuthorized(MainActivity.this);
+                try {
+                    view.evaluateJavascript("window.__moliysApplyLicense&&window.__moliysApplyLicense(" + (ok ? "true" : "false") + ");", null);
+                } catch (Exception ignored) {
+                }
+            }
+        });
+    }
+
+    /** 接口页「打开」：把该接口按配置方式加载（单仓/多仓 JSON 均可），再用内置影视浏览。 */
+    private void openInterfaceConfig(final String name, final String url) {
+        if (url == null || url.trim().length() == 0) {
+            return;
+        }
+        final String cfgName = (name == null || name.trim().length() == 0) ? url.trim() : name.trim();
+        final String cfgUrl = url.trim();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Config cfg = Config.find(cfgUrl, cfgName, 0);
+                VodConfig.load(cfg, new Callback() {
+                    @Override
+                    public void success() {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                openVideoHome();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void error(String msg) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "接口加载失败，请检查地址", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    /** 弹幕页「应用」：把该弹幕接口写入播放器设置，并打开弹幕加载与自动搜索。 */
+    private void applyDanmakuConfig(final String name, final String url) {
+        final String api = url == null ? "" : url.trim();
+        if (api.length() == 0 || !DanmakuSetting.isValidApiUrl(api)) {
+            Toast.makeText(MainActivity.this, "弹幕接口无效，请检查地址", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        DanmakuSetting.putApiUrl(api);
+        DanmakuSetting.putLoad(true);
+        DanmakuSetting.putAuto(true);
+        final String label = (name == null || name.trim().length() == 0) ? "弹幕接口" : name.trim();
+        Toast.makeText(MainActivity.this, "已应用：" + label, Toast.LENGTH_SHORT).show();
     }
 
     private void startFongmi(final String cls, final String url) {
@@ -881,9 +1138,15 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    applyBarIcons(light);
+                    MoliysTheme.set(light);
+                    applyShellTheme();
                 }
             });
+        }
+
+        @JavascriptInterface
+        public String getTheme() {
+            return MoliysTheme.toJson();
         }
 
         @JavascriptInterface
@@ -958,7 +1221,83 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "影视功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
                     enterVideo();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openVideoLive() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "直播功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.openVideoLive();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openVideoSettings() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "设置功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.openVideoSettings();
+                }
+            });
+        }
+
+        /** 采集页「打开站点」：受同样的授权门禁，通过后把采集接口以配置方式加载。 */
+        @JavascriptInterface
+        public void openCaiSite(final String name, final String api) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "该功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.openCaiSite(name, api);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openLicense() {
+            showLicenseDialog();
+        }
+        @JavascriptInterface
+        public String getLicenseInfo() {
+            return LicenseManager.statusJson(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public String isAuthorized() {
+            return LicenseManager.isAuthorized(MainActivity.this) ? "1" : "0";
+        }
+
+        @JavascriptInterface
+        public void refreshLicense() {
+            LicenseManager.refresh(MainActivity.this, new LicenseManager.Callback() {
+                @Override
+                public void done(boolean changed) {
+                    injectVideoEntry(webView);
+                    pushLicenseState(webView);
                 }
             });
         }
@@ -975,12 +1314,55 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openLive() {
-            openVideoLive();
+            MainActivity.this.openVideoLive();
         }
 
+        /** 接口页「打开」：与 影视主页/采集打开站点 同一套授权门禁，通过后按配置方式加载该接口。 */
         @JavascriptInterface
-        public void openInterface(final String url) {
-            openVideoInterface(url);
+        public void openInterface(final String name, final String url) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "该功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.openInterfaceConfig(name, url);
+                }
+            });
+        }
+
+        /** 直播页「打开」：与 影视主页/采集打开站点 同一套授权门禁，通过后按配置方式加载该直播源并进入直播播放界面。 */
+        @JavascriptInterface
+        public void openLiveSource(final String name, final String url) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "该功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.openLiveSource(name, url);
+                }
+            });
+        }
+
+        /** 弹幕页「应用」：与 影视主页/接口打开 同一套授权门禁，通过后把弹幕接口写入播放器设置。 */
+        @JavascriptInterface
+        public void applyDanmaku(final String name, final String url) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!LicenseManager.isAuthorized(MainActivity.this)) {
+                        Toast.makeText(MainActivity.this, "该功能未授权或已到期", Toast.LENGTH_SHORT).show();
+                        showLicenseDialog();
+                        return;
+                    }
+                    MainActivity.this.applyDanmakuConfig(name, url);
+                }
+            });
         }
 
         @JavascriptInterface

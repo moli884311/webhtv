@@ -1,7 +1,7 @@
 <resources xmlns:xliff="http://schemas.android.com/apk/res-auto">
 
     <!-- App -->
-    <string name="app_name">过包名版本</string>
+    <string name="app_name">过包名版本测试版</string>
 
     <!-- Live -->
     <string name="live_pass">Pass</string>
@@ -558,6 +558,38 @@
     <string name="setting_shell_proxy">Proxy</string>
     <string name="setting_shell_proxy_config">Proxy</string>
     <string name="setting_custom_csp">Site Injection</string>
+
+    <!-- AI auto site -->
+    <string name="setting_ai_site">AI Auto Site</string>
+    <string name="setting_ai_site_count">%1$d site(s)</string>
+    <string name="setting_ai_site_none">Not added</string>
+    <string name="ai_site_target_hint">Site URL or interface address</string>
+    <string name="ai_site_recognize">Recognize</string>
+    <string name="ai_site_ai_hint">Auto probing runs first; AI is called only when probing fails.</string>
+    <string name="ai_site_ai_url_hint">AI API address</string>
+    <string name="ai_site_ai_key_hint">AI Key</string>
+    <string name="ai_site_ai_model_hint">Model</string>
+    <string name="ai_site_consent">Page content will be sent to the AI service you configured. I understand and agree.</string>
+    <string name="ai_site_added">Added sites</string>
+    <string name="ai_site_empty">No sites yet</string>
+    <string name="ai_site_need_url">Enter a site URL first</string>
+    <string name="ai_site_need_consent">Tick the consent box first</string>
+    <string name="ai_site_need_ai">This site needs AI recognition. Configure AI first.</string>
+    <string name="ai_site_running">Recognizing…</string>
+    <string name="ai_site_added_ok">Site added</string>
+    <string name="ai_site_add_fail">Failed: %1$s</string>
+    <string name="ai_site_imported">Imported %1$d site(s)</string>
+    <string name="ai_site_deleted">Site deleted</string>
+    <string name="ai_site_delete_fail">Delete failed</string>
+    <string name="ai_site_saved">AI settings saved</string>
+    <string name="ai_site_invalid_key">Fill in a valid AI address and Key</string>
+    <string name="ai_site_step_probe">Probing the site…</string>
+    <string name="ai_site_step_write">Asking AI to write the source…</string>
+    <string name="ai_site_step_check">Self-checking the generated source…</string>
+    <string name="ai_site_step_repair">Self-check failed; asking AI to fix it…</string>
+    <string name="ai_site_probe_fail">Probe failed: %1$s</string>
+    <string name="ai_site_source_ok">Source generated (%1$s), self-check passed</string>
+    <string name="ai_site_source_fail">Cannot build this site: %1$s</string>
     <string name="setting_custom_csp_add">Add</string>
     <string name="setting_custom_csp_insert_short">Pos</string>
     <string name="setting_custom_csp_recognize">Detect</string>

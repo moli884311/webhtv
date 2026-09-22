@@ -1,6 +1,5 @@
 package com.fongmi.android.tv.ui.activity;
 
-import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -22,6 +21,7 @@ import com.fongmi.android.tv.web.WebHomeChrome;
 import com.fongmi.android.tv.web.WebHomeChromeOptions;
 import com.fongmi.android.tv.web.WebHomeViewport;
 import com.google.gson.JsonObject;
+import com.moliys.tvbox.MoliysTheme;
 
 final class WebHomeChromeController {
 
@@ -31,6 +31,8 @@ final class WebHomeChromeController {
     interface Host {
 
         boolean isWebHomeChromeActive();
+
+        boolean isNavigationForceHidden();
 
         void onWebHomeChromeChanged(String mode);
 
@@ -176,10 +178,11 @@ final class WebHomeChromeController {
 
     private void applyLayout() {
         boolean active = isActive();
-        boolean normal = !active || WebHomeChrome.NORMAL.equals(mode);
+        boolean chromeNormal = !active || WebHomeChrome.NORMAL.equals(mode);
+        boolean normal = chromeNormal && !host.isNavigationForceHidden();
         binding.navigation.setVisibility(normal ? View.VISIBLE : View.GONE);
         WebHomeViewport current = buildViewport();
-        int top = normal ? current.getSafeTop() : 0;
+        int top = chromeNormal ? current.getSafeTop() : 0;
         int bottom = normal ? current.getSafeBottom() : 0;
         binding.container.setPadding(0, top, 0, 0);
         binding.navigation.setPadding(0, 0, 0, bottom);
@@ -222,7 +225,6 @@ final class WebHomeChromeController {
     private boolean useDarkIcons(String style) {
         if (WebHomeChromeOptions.STYLE_DARK.equals(style)) return true;
         if (WebHomeChromeOptions.STYLE_LIGHT.equals(style)) return false;
-        int mask = activity.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        return mask != Configuration.UI_MODE_NIGHT_YES;
+        return MoliysTheme.isLight();
     }
 }

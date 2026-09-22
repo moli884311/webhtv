@@ -48,6 +48,7 @@ import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.fongmi.android.tv.utils.Util;
+import com.moliys.tvbox.MoliysTheme;
 import com.fongmi.android.tv.web.WebHomeChromeStartup;
 import com.fongmi.android.tv.web.WebHomeViewport;
 import com.github.catvod.net.OkHttp;
@@ -60,8 +61,10 @@ import org.greenrobot.eventbus.ThreadMode;
 public class HomeActivity extends BaseActivity implements NavigationBarView.OnItemSelectedListener, WebHomeChromeController.Host {
 
     public static final String EXTRA_NAV_POSITION = "nav_position";
+    public static final String EXTRA_HIDE_NAV = "hide_nav";
     private static final String STATE_RETURN_VOD_FROM_ENHANCE = "returnVodFromEnhance";
     private static final String STATE_CURRENT_POSITION = "currentPosition";
+    private static final String STATE_KEEP_NAV_HIDDEN = "keepNavHidden";
 
     private FragmentStateManager mManager;
     private ActivityHomeBinding mBinding;
@@ -70,6 +73,8 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     private boolean wideWindow;
     private int currentPosition;
     private boolean returnVodFromEnhance;
+    private boolean navHidden;
+    private boolean keepNavHidden;
 
     @Override
     protected ViewBinding getBinding() {
@@ -79,6 +84,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        setIntent(intent);
         checkAction(intent);
     }
 
@@ -92,6 +98,8 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     protected void initView(Bundle savedInstanceState) {
         wideWindow = MobileWindow.isWide(this);
         returnVodFromEnhance = savedInstanceState != null && savedInstanceState.getBoolean(STATE_RETURN_VOD_FROM_ENHANCE);
+        keepNavHidden = (savedInstanceState != null && savedInstanceState.getBoolean(STATE_KEEP_NAV_HIDDEN))
+                || getIntent().getBooleanExtra(EXTRA_HIDE_NAV, false);
         currentPosition = savedInstanceState == null ? 0 : savedInstanceState.getInt(STATE_CURRENT_POSITION, 0);
         mStartupConfig = Config.vod();
         mChrome = new WebHomeChromeController(this, mBinding, this, savedInstanceState, WebHomeChromeStartup.restore(mStartupConfig));
@@ -99,12 +107,33 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         mBinding.navigation.setOnItemSelectedListener(this);
         PermissionUtil.requestFile(this, allGranted -> PermissionUtil.requestNotify(this));
         initFragment(savedInstanceState);
+        applyKeepNavHidden();
         initConfig();
+    }
+
+    /** 站点要求进入原生页时保持隐藏底部标签（含纯深色背景，避免透出壁纸）。 */
+    private void applyKeepNavHidden() {
+        if (!keepNavHidden) return;
+        mBinding.getRoot().setBackgroundColor(MoliysTheme.shellBackground());
+        setNavigationVisible(false);
+        if (mChrome != null) mChrome.refreshLayout();
+    }
+
+    @Override
+    public boolean isNavigationForceHidden() {
+        return keepNavHidden;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        applyKeepNavHidden();
     }
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         outState.putBoolean(STATE_RETURN_VOD_FROM_ENHANCE, returnVodFromEnhance);
+        outState.putBoolean(STATE_KEEP_NAV_HIDDEN, keepNavHidden);
         outState.putInt(STATE_CURRENT_POSITION, currentPosition);
         if (mChrome != null) mChrome.save(outState);
         super.onSaveInstanceState(outState);
@@ -119,6 +148,12 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         if (intent.hasExtra(EXTRA_NAV_POSITION)) {
             change(intent.getIntExtra(EXTRA_NAV_POSITION, 0));
             intent.removeExtra(EXTRA_NAV_POSITION);
+            if (intent.getBooleanExtra(EXTRA_HIDE_NAV, false)) {
+                intent.removeExtra(EXTRA_HIDE_NAV);
+                keepNavHidden = true;
+                mBinding.getRoot().setBackgroundColor(MoliysTheme.shellBackground());
+                setNavigationVisible(false);
+            }
         } else if (Intent.ACTION_SEND.equals(intent.getAction())) {
             VideoActivity.push(this, intent.getStringExtra(Intent.EXTRA_TEXT));
         } else if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
@@ -215,6 +250,8 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     }
 
     public void setNavigationVisible(boolean visible) {
+        if (visible && keepNavHidden) visible = false;
+        navHidden = !visible;
         RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) mBinding.container.getLayoutParams();
         if (visible) {
             params.addRule(RelativeLayout.ABOVE, R.id.navigation);
@@ -414,6 +451,8 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     protected void onBackInvoked() {
         if (mChrome != null && mChrome.consumeBack()) {
             return;
+        } else if (navHidden) {
+            super.onBackInvoked();
         } else if (!mBinding.navigation.getMenu().findItem(R.id.vod).isVisible()) {
             setNavigation();
         } else if (returnVodFromEnhance && mManager.isVisible(3)) {

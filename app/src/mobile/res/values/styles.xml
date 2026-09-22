@@ -1,6 +1,20 @@
 <resources>
 
-    <style name="Theme.Base" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
+    <style name="Theme.Base" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/moliys_primary</item>
+        <item name="colorOnPrimary">@color/moliys_on_primary</item>
+        <item name="colorPrimaryContainer">@color/moliys_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/moliys_on_primary_container</item>
+        <item name="colorSecondary">@color/moliys_primary</item>
+        <item name="colorSecondaryContainer">@color/moliys_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/moliys_on_secondary_container</item>
+        <item name="colorSurface">@color/moliys_surface</item>
+        <item name="colorOnSurface">@color/moliys_on_surface</item>
+        <item name="colorSurfaceVariant">@color/moliys_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/moliys_on_surface_variant</item>
+        <item name="colorOutline">@color/moliys_outline</item>
+        <item name="colorOnBackground">@color/moliys_on_surface</item>
+        <item name="android:colorBackground">@color/moliys_bg</item>
         <item name="android:statusBarColor">@color/transparent</item>
         <item name="android:navigationBarColor">@color/transparent</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
@@ -86,8 +100,8 @@
 
     <style name="ToolbarTextAppearance" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textSize">20sp</item>
-        <item name="android:textColor">@color/white</item>
-        <item name="titleTextColor">@color/white</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="titleTextColor">?attr/colorOnSurface</item>
     </style>
 
     <style name="ToolbarPopupTheme" parent="ThemeOverlay.Material3.Light">

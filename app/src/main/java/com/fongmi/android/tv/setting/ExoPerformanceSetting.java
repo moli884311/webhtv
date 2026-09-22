@@ -30,6 +30,7 @@ public final class ExoPerformanceSetting {
     private static final String KEY_AUTO_REBUFFER_MS = "perf_exo_auto_rebuffer_ms";
     private static final String KEY_AUTO_CLEAN_STREAK = "perf_exo_auto_clean_streak";
     private static final String KEY_NETWORK_PROTECTION_MODE = "perf_exo_network_protection_mode";
+    private static final String KEY_AUDIO_DIRECT = "perf_exo_audio_direct";
     private static final ExoRebufferLearningCoordinator REBUFFER_LEARNING =
             new ExoRebufferLearningCoordinator(
                     new ExoRebufferLearningStore(
@@ -127,6 +128,21 @@ public final class ExoPerformanceSetting {
             case 10_000 -> 15_000;
             default -> 1_000;
         };
+    }
+
+    /**
+     * 是否启用「压缩音频直通」实验路径：把 AAC/MP3 等压缩帧直接写进自建 AudioTrack。
+     *
+     * <p>该路径是为个别厂商 HAL 写的兼容分支，只在标准 offload 不受支持而平台又自称支持
+     * direct playback 时生效。它在非目标机型上会造成卡顿、播放中途丢声，因此默认关闭；
+     * 关闭后走 Media3 默认的「解码成 PCM 再输出」，与 IJK/MPV 的表现一致。
+     */
+    public static boolean isAudioDirect() {
+        return Prefers.getBoolean(KEY_AUDIO_DIRECT, false);
+    }
+
+    public static void putAudioDirect(boolean value) {
+        Prefers.put(KEY_AUDIO_DIRECT, value);
     }
 
     public static boolean isPrioritizeTime() {

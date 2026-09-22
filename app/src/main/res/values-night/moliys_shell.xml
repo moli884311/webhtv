@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="moliys_bg">#FFEEF2F7</color>
-    <color name="moliys_icon_bg">#FF1E6FEB</color>
+    <color name="moliys_bg">#FF0D1420</color>
 
     <style name="Theme.MoliysShell" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/moliys_bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>

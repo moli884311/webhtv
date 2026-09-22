@@ -20,6 +20,7 @@ import com.fongmi.android.tv.setting.CustomCspSetting;
 import com.fongmi.android.tv.setting.ProxySetting;
 import com.fongmi.android.tv.setting.SiteHealthStore;
 import com.fongmi.android.tv.ui.base.BaseActivity;
+import com.fongmi.android.tv.ui.dialog.AiSiteDialog;
 import com.fongmi.android.tv.ui.dialog.CspWarmupDialog;
 import com.fongmi.android.tv.ui.dialog.CustomCspDialog;
 import com.fongmi.android.tv.ui.dialog.DebugLogDialog;
@@ -37,6 +38,7 @@ import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.web.ext.WebHomeExtensionRegistry;
 import com.github.catvod.crawler.SpiderDebug;
+import com.moliys.tvbox.AiSite;
 
 public class SettingEnhanceActivity extends BaseActivity {
 
@@ -85,6 +87,7 @@ public class SettingEnhanceActivity extends BaseActivity {
         mBinding.shellProxy.setOnClickListener(view -> ShellProxyDialog.show(this, this::setText));
         mBinding.shellProxy.setOnLongClickListener(v -> false);
         mBinding.shellProxyConfig.setVisibility(View.GONE);
+        mBinding.aiSite.setOnClickListener(view -> AiSiteDialog.show(this, this::setText));
         mBinding.customCsp.setOnClickListener(view -> PermissionUtil.requestFile(this, granted -> {
             if (isFinishing() || isDestroyed() || getSupportFragmentManager().isStateSaved()) return;
             if (granted) CustomCspDialog.show(this, this::setText);
@@ -105,6 +108,7 @@ public class SettingEnhanceActivity extends BaseActivity {
                 mBinding.loginState,
                 mBinding.shellProxy,
                 mBinding.shellProxyConfig,
+                mBinding.aiSite,
                 mBinding.managePage,
                 mBinding.webHomeFullscreen,
                 mBinding.cspWarmup,
@@ -136,6 +140,7 @@ public class SettingEnhanceActivity extends BaseActivity {
         safeSet("gitCloud", mBinding.gitCloudText, () -> getString(R.string.git_cloud_account_count, GitCloudAccountStore.list().size()));
         setShellProxyText();
         setCustomCspText();
+        setAiSiteText();
         safeSet("loginState", mBinding.loginStateText, () -> {
             int learned = LoginStateSync.learnedCount();
             int pending = LoginStateSync.pendingPaths().size();
@@ -168,6 +173,13 @@ public class SettingEnhanceActivity extends BaseActivity {
             CustomCspSetting.Count count = status.count();
             mBinding.customCspText.setText(getSwitch(status.enabled()) + " · " + getString(R.string.setting_custom_csp_count, count.active(), count.enabled()));
         }, () -> setError(mBinding.customCspText));
+    }
+
+    private void setAiSiteText() {
+        safeRun("aiSite", () -> {
+            int count = AiSite.countSites(this);
+            mBinding.aiSiteText.setText(count == 0 ? getString(R.string.setting_ai_site_none) : getString(R.string.setting_ai_site_count, count));
+        }, () -> setError(mBinding.aiSiteText));
     }
 
     private void safeSet(String name, TextView view, TextSupplier supplier) {
