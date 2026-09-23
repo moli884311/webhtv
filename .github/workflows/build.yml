@@ -1,10 +1,10 @@
-name: Build 过包名版本
+name: Build 沫离影视壳子
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - bypass-official
+      - shell
 
 permissions:
   contents: read
@@ -66,8 +66,8 @@ jobs:
 
       - name: Build release
         env:
-          WEBHTV_RELEASE_TAG: moliys-1.0.67
-          WEBHTV_APK_SUFFIX: bypass-official
+          WEBHTV_RELEASE_TAG: moliys-shell-1.0.0
+          WEBHTV_APK_SUFFIX: shell
         run: |
           chmod +x ./gradlew
           ./gradlew :app:assembleMobileArm64_v8aRelease --no-daemon
@@ -75,6 +75,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: moliys-bypass-official-arm64
+          name: moliys-shell-arm64
           path: app/build/outputs/apk/**/release/*.apk
           if-no-files-found: error

@@ -149,18 +149,13 @@
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
 
-        <!-- 沫离接口：站点壳（Launcher 入口） -->
+        <!-- 站点壳（非入口，入口为原生 HomeActivity） -->
         <activity
             android:name="com.moliys.tvbox.MainActivity"
             android:configChanges="keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
-            android:exported="true"
+            android:exported="false"
             android:launchMode="singleTask"
-            android:theme="@style/Theme.MoliysShell">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:theme="@style/Theme.MoliysShell" />
 
         <activity
             android:name="com.moliys.tvbox.WebActivity"

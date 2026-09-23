@@ -35,12 +35,12 @@ android {
     ndkVersion "29.0.14206865"
 
     defaultConfig {
-        applicationId "com.fongmi.android.tv"
+        applicationId "com.moliys.shell"
         buildConfigField "boolean", "LITE_EDITION", "false"
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
-        versionCode 68
-        versionName "1.0.67"
+        versionCode 1
+        versionName "1.0.0"
         buildConfigField "String", "BUILD_TIME", "\"${buildTime}\""
         buildConfigField "String", "BUILD_TAG", "\"${releaseTag}\""
         buildConfigField "String", "GIT_REVISION", "\"${gitRevision}\""
